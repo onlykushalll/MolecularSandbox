@@ -52,10 +52,23 @@ export function Beaker({ container }: BeakerProps) {
     [colorData]
   );
 
-  // Beaker dimensions based on capacity
-  const radius = 0.4 + (container.capacity / 400) * 0.2;
-  const height = 1.0 + (container.capacity / 400) * 0.4;
-  const liquidHeight = height * fillRatio * 0.85;
+  // Container dimensions based on capacity and type
+  const isErlenmeyer = container.type === "erlenmeyer";
+  const isFlask = container.type === "flask";
+  const isTestTube = container.type === "test_tube";
+  const isRoundBottom = container.type === "round_bottom_flask" || container.type === "flask";
+
+  const radius = isTestTube
+    ? 0.18 + (container.capacity / 400) * 0.08
+    : isErlenmeyer
+      ? 0.45 + (container.capacity / 400) * 0.15
+      : 0.4 + (container.capacity / 400) * 0.2;
+  const height = isTestTube
+    ? 0.8 + (container.capacity / 400) * 0.3
+    : isRoundBottom
+      ? 1.1 + (container.capacity / 400) * 0.3
+      : 1.0 + (container.capacity / 400) * 0.4;
+  const liquidHeight = height * fillRatio * (isErlenmeyer ? 0.75 : isTestTube ? 0.9 : 0.85);
 
   // Temperature-based color tint for the glass
   const tempColor = useMemo(() => {
@@ -136,58 +149,159 @@ export function Beaker({ container }: BeakerProps) {
         document.body.style.cursor = "default";
       }}
     >
-      {/* Glass body — cylinder */}
-      <mesh castShadow receiveShadow>
-        <cylinderGeometry args={[radius, radius * 0.95, height, 64, 1, true]} />
-        <meshPhysicalMaterial
-          color={tempColor}
-          transparent
-          opacity={0.15}
-          roughness={0.02}
-          metalness={0}
-          transmission={0.95}
-          thickness={0.3}
-          ior={1.5}
-          clearcoat={1}
-          clearcoatRoughness={0}
-          side={THREE.DoubleSide}
-        />
-        {ringColor && <Edges color={ringColor} linewidth={2} />}
-      </mesh>
+      {/* Glass body — shape depends on container type */}
+      {isErlenmeyer ? (
+        // Erlenmeyer flask: wide base, narrow neck
+        <group>
+          {/* Conical body */}
+          <mesh castShadow receiveShadow>
+            <cylinderGeometry args={[radius * 0.3, radius, height * 0.7, 64, 1, true]} />
+            <meshPhysicalMaterial
+              color={tempColor}
+              transparent
+              opacity={0.15}
+              roughness={0.02}
+              metalness={0}
+              transmission={0.95}
+              thickness={0.3}
+              ior={1.5}
+              clearcoat={1}
+              clearcoatRoughness={0}
+              side={THREE.DoubleSide}
+            />
+            {ringColor && <Edges color={ringColor} linewidth={2} />}
+          </mesh>
+          {/* Narrow neck */}
+          <mesh position={[0, height * 0.35 + 0.05, 0]} castShadow>
+            <cylinderGeometry args={[radius * 0.3, radius * 0.3, height * 0.3, 32, 1, true]} />
+            <meshPhysicalMaterial
+              color={tempColor}
+              transparent
+              opacity={0.15}
+              roughness={0.02}
+              transmission={0.95}
+              ior={1.5}
+              clearcoat={1}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+          {/* Neck rim */}
+          <mesh position={[0, height / 2 + 0.02, 0]}>
+            <torusGeometry args={[radius * 0.3, 0.015, 8, 32]} />
+            <meshPhysicalMaterial color={tempColor} transparent opacity={0.2} transmission={0.9} />
+          </mesh>
+          {/* Bottom */}
+          <mesh position={[0, -height * 0.35, 0]} receiveShadow>
+            <cylinderGeometry args={[radius, radius, 0.02, 64]} />
+            <meshPhysicalMaterial color={tempColor} transparent opacity={0.2} roughness={0.05} transmission={0.8} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      ) : isTestTube ? (
+        // Test tube: narrow cylinder with rounded bottom
+        <group>
+          <mesh castShadow receiveShadow>
+            <cylinderGeometry args={[radius, radius, height, 32, 1, true]} />
+            <meshPhysicalMaterial
+              color={tempColor}
+              transparent
+              opacity={0.15}
+              roughness={0.02}
+              transmission={0.95}
+              ior={1.5}
+              clearcoat={1}
+              clearcoatRoughness={0}
+              side={THREE.DoubleSide}
+            />
+            {ringColor && <Edges color={ringColor} linewidth={2} />}
+          </mesh>
+          {/* Rounded bottom hemisphere */}
+          <mesh position={[0, -height / 2, 0]}>
+            <sphereGeometry args={[radius, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2]} />
+            <meshPhysicalMaterial color={tempColor} transparent opacity={0.18} roughness={0.05} transmission={0.85} side={THREE.DoubleSide} />
+          </mesh>
+          {/* Rim */}
+          <mesh position={[0, height / 2 + 0.005, 0]}>
+            <torusGeometry args={[radius, 0.01, 8, 32]} />
+            <meshPhysicalMaterial color={tempColor} transparent opacity={0.2} transmission={0.9} />
+          </mesh>
+        </group>
+      ) : isRoundBottom ? (
+        // Round-bottom flask: spherical body with narrow neck
+        <group>
+          {/* Spherical body */}
+          <mesh position={[0, -height * 0.15, 0]} castShadow receiveShadow>
+            <sphereGeometry args={[radius * 0.9, 48, 48, 0, Math.PI * 2, 0, Math.PI * 0.6]} />
+            <meshPhysicalMaterial
+              color={tempColor}
+              transparent
+              opacity={0.15}
+              roughness={0.02}
+              transmission={0.95}
+              ior={1.5}
+              clearcoat={1}
+              side={THREE.DoubleSide}
+            />
+            {ringColor && <Edges color={ringColor} linewidth={2} />}
+          </mesh>
+          {/* Narrow neck */}
+          <mesh position={[0, height * 0.25, 0]} castShadow>
+            <cylinderGeometry args={[radius * 0.22, radius * 0.22, height * 0.5, 32, 1, true]} />
+            <meshPhysicalMaterial color={tempColor} transparent opacity={0.15} roughness={0.02} transmission={0.95} ior={1.5} clearcoat={1} side={THREE.DoubleSide} />
+          </mesh>
+          {/* Neck rim */}
+          <mesh position={[0, height / 2 + 0.02, 0]}>
+            <torusGeometry args={[radius * 0.22, 0.015, 8, 32]} />
+            <meshPhysicalMaterial color={tempColor} transparent opacity={0.2} transmission={0.9} />
+          </mesh>
+        </group>
+      ) : (
+        // Default beaker: cylinder
+        <group>
+          <mesh castShadow receiveShadow>
+            <cylinderGeometry args={[radius, radius * 0.95, height, 64, 1, true]} />
+            <meshPhysicalMaterial
+              color={tempColor}
+              transparent
+              opacity={0.15}
+              roughness={0.02}
+              metalness={0}
+              transmission={0.95}
+              thickness={0.3}
+              ior={1.5}
+              clearcoat={1}
+              clearcoatRoughness={0}
+              side={THREE.DoubleSide}
+            />
+            {ringColor && <Edges color={ringColor} linewidth={2} />}
+          </mesh>
+          {/* Bottom of beaker */}
+          <mesh position={[0, -height / 2, 0]} receiveShadow>
+            <cylinderGeometry args={[radius * 0.95, radius * 0.95, 0.02, 64]} />
+            <meshPhysicalMaterial color={tempColor} transparent opacity={0.2} roughness={0.05} transmission={0.8} side={THREE.DoubleSide} />
+          </mesh>
+          {/* Pour spout */}
+          <mesh position={[radius, height / 2 - 0.02, 0]} rotation={[0, 0, -0.3]}>
+            <boxGeometry args={[0.12, 0.08, 0.1]} />
+            <meshPhysicalMaterial color={tempColor} transparent opacity={0.15} transmission={0.9} />
+          </mesh>
+        </group>
+      )}
 
-      {/* Bottom of beaker */}
-      <mesh position={[0, -height / 2, 0]} receiveShadow>
-        <cylinderGeometry args={[radius * 0.95, radius * 0.95, 0.02, 64]} />
-        <meshPhysicalMaterial
-          color={tempColor}
-          transparent
-          opacity={0.2}
-          roughness={0.05}
-          transmission={0.8}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* Pour spout */}
-      <mesh position={[radius, height / 2 - 0.02, 0]} rotation={[0, 0, -0.3]}>
-        <boxGeometry args={[0.12, 0.08, 0.1]} />
-        <meshPhysicalMaterial
-          color={tempColor}
-          transparent
-          opacity={0.15}
-          transmission={0.9}
-        />
-      </mesh>
-
-      {/* Liquid inside */}
+      {/* Liquid inside — adjusted for container type */}
       {liquidHeight > 0.01 && (
         <mesh
           ref={liquidRef}
           position={[0, -height / 2 + liquidHeight / 2 + 0.02, 0]}
         >
-          <cylinderGeometry
-            args={[radius * 0.92, radius * 0.88, 1, 48]}
-          />
+          {isErlenmeyer ? (
+            <cylinderGeometry args={[radius * 0.25, radius * 0.88, 1, 48]} />
+          ) : isTestTube ? (
+            <cylinderGeometry args={[radius * 0.85, radius * 0.85, 1, 32]} />
+          ) : isRoundBottom ? (
+            <sphereGeometry args={[radius * 0.85, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
+          ) : (
+            <cylinderGeometry args={[radius * 0.92, radius * 0.88, 1, 48]} />
+          )}
           <meshPhysicalMaterial
             color={liquidColor}
             transparent
@@ -298,7 +412,7 @@ export function Beaker({ container }: BeakerProps) {
         </mesh>
       ))}
 
-      {/* Beaker label */}
+      {/* Beaker label with type icon */}
       <Text
         position={[0, -height / 2 - 0.2, radius + 0.01]}
         fontSize={0.08}
@@ -307,6 +421,16 @@ export function Beaker({ container }: BeakerProps) {
         anchorY="middle"
       >
         {container.id.toUpperCase()}
+      </Text>
+      {/* Container type badge */}
+      <Text
+        position={[0, -height / 2 - 0.32, radius + 0.01]}
+        fontSize={0.04}
+        color={isErlenmeyer ? "#f59e0b" : isTestTube ? "#8b5cf6" : isRoundBottom ? "#06b6d4" : "#6b7280"}
+        anchorX="center"
+        anchorY="middle"
+      >
+        {isErlenmeyer ? "◇ Erlenmeyer" : isTestTube ? "◸ Test Tube" : isRoundBottom ? "○ Round Flask" : "⬜ Beaker"}
       </Text>
 
       {/* Volume indicator */}

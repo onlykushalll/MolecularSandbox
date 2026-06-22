@@ -1,8 +1,8 @@
 # The Molecular Sandbox — Worklog
 
-## Project Status: ✅ FULLY FUNCTIONAL + ENHANCED
+## Project Status: ✅ FULLY FUNCTIONAL + ENHANCED (Round 5)
 
-The Molecular Sandbox is a scientifically accurate 3D chemistry simulator built with Next.js 16, React Three Fiber, and Prisma. The app is **live and working** with major new features added in Round 2.
+The Molecular Sandbox is a scientifically accurate 3D chemistry simulator built with Next.js 16, React Three Fiber, and Prisma. The app is **live and working** with major new features added across 5 rounds.
 
 ---
 
@@ -647,3 +647,186 @@ bun run db:push      # Push schema changes to SQLite
 - **Panel toggles (pH/sound)**: `src/components/ui-panels/InstrumentPanel.tsx`
 - **Updated store**: `src/lib/store/lab-store.ts`
 - **Styling utilities**: `src/app/globals.css`
+
+---
+
+## Round 5 Updates (2025-06-23) — Cron Review #4: "Reference & Variety"
+
+### QA Findings (Pre-Round 5)
+- ✅ Page loads HTTP 200, ~1-2s compile time
+- ✅ 3D scene renders with beakers, bench, lighting
+- ✅ 61 chemicals + 28 reactions loaded from API
+- ✅ All existing features functional (reactions, pour, save, pH strip, sound, etc.)
+- ✅ No page errors (only three.js deprecation warnings for PCFSoftShadowMap)
+- ⚠️ **PCFSoftShadowMap deprecation warnings** in console — **FIXED** (partially — set shadow map type in onCreated)
+- ⚠️ No Periodic Table reference — **FIXED**
+- ⚠️ No Solubility Rules reference chart — **FIXED**
+- ⚠️ No multiple container types (only beaker shape) — **FIXED**
+- ⚠️ No welcome/onboarding for new users — **FIXED**
+- ⚠️ LabBench missing real lab equipment — **FIXED**
+
+### Bug Fixes
+1. **PCFSoftShadowMap deprecation** — Added `gl.shadowMap.type = THREE.PCFShadowMap` in `onCreated` callback on Canvas. Also added `useLegacyLights: false` to GL props. (Warnings may still appear from R3F internals before onCreated fires.)
+2. **Missing `cn` import in InstrumentPanel** — After adding the container type selector, the `cn` utility was used but not imported, causing a client-side crash. Fixed by adding `import { cn } from "@/lib/utils"`.
+
+### New Features (6 major additions)
+
+#### 1. Interactive Periodic Table Reference Panel (`src/components/ui-panels/PeriodicTable.tsx`)
+- 47 elements with real data (H through Pb, key transition metals, halogens, noble gases)
+- Mini periodic table grid layout with color-coded categories
+- Category filter pills: Alkali Metal, Alkaline Earth, Transition Metal, Post-Transition, Metalloid, Nonmetal, Halogen, Noble Gas
+- Search by name, symbol, or atomic number
+- Click any element for detail card showing:
+  - Symbol, name, atomic number
+  - Category badge with category color
+  - Atomic mass (u), electronegativity, oxidation states, period/group
+- Added as "Elements" tab in left panel
+
+#### 2. Solubility Rules Reference Chart (`src/components/ui-panels/SolubilityRules.tsx`)
+- All 8 standard solubility rules from Brown/LeMay chemistry textbook
+- Color-coded rule cards: green (always soluble), amber (mostly soluble), red (mostly insoluble)
+- Each rule shows:
+  - Rule title and description
+  - ✓ Soluble examples (green chips)
+  - ✗ Insoluble/exceptions (red chips)
+- Legend at top: Always soluble / Mostly soluble / Mostly insoluble
+- Quick tip section with precipitation prediction guidance
+- Added as "Solubility" tab in left panel
+
+#### 3. Multiple Container Types (Beaker, Erlenmeyer, Test Tube, Round Flask)
+- **Container type selector** in InstrumentPanel — 4 type buttons with icons
+  - Beaker (emerald) — default cylinder shape with pour spout
+  - Erlenmeyer (amber) — conical body with narrow neck and rim
+  - Test Tube (purple) — narrow cylinder with rounded bottom hemisphere
+  - Round Flask (cyan) — spherical body with narrow neck
+- Each type has unique 3D geometry:
+  - Different radius/height calculations
+  - Type-specific liquid fill ratios
+  - Unique body shapes (conical, spherical, narrow)
+  - Proper bottom shapes (flat, rounded, spherical)
+  - Neck/rim details
+- Container type badge shown below beaker label in 3D scene
+- `setContainerType` action added to Zustand store
+- Liquid rendering adapts to container shape (conical for Erlenmeyer, narrow for test tube, spherical for round flask)
+
+#### 4. Welcome/Onboarding Modal (`page.tsx`)
+- Shows on first visit (stored in localStorage `molecular-sandbox-visited`)
+- 3-step guide:
+  1. Select a beaker (click or 1/2/3)
+  2. Add chemicals (Chemical Shelf)
+  3. React & observe
+- Pro tips section with:
+  - Presets tab for one-click experiments
+  - Container type switching
+  - Elements tab for Periodic Table
+  - Shift-click pour between beakers
+  - Keyboard shortcuts (H, T, M)
+- Gradient "Start Experimenting" button
+- Animated entrance with backdrop blur
+
+#### 5. Enhanced LabBench Equipment (`LabBench.tsx`)
+- Added 5 new 3D equipment pieces:
+  - **Wash bottle** (right side) — translucent body with angled spout and liquid inside
+  - **Ring stand** (right side) — metal base plate, vertical rod, ring clamp, screw
+  - **Thermometer** (left side) — glass tube, red mercury bulb and column
+  - **Safety goggles** (center-left) — two curved lenses, bridge, strap
+  - All existing equipment retained (stool, bottles, microscope, books)
+
+#### 6. Enhanced Styling (`globals.css` + `page.tsx`)
+- **10+ new utility classes & animations**:
+  - `modal-enter` — scale+translate entrance for welcome modal
+  - `stagger-in` — left-slide entrance for list items
+  - `element-glow` — hover glow effect for periodic table cells
+  - `badge-shine` — shimmering shine for container type badges
+  - `tab-switch` — fade+slide animation for tab changes
+  - `settle` — falling-settle animation for precipitates
+  - `chem-card-hover` — left-border slide effect for chemical cards
+  - `status-blink` — blink animation for status dots
+  - Plus keyframes for flame-intensity animation
+- **4-tab left panel** — Shelf / Presets / Elements / Solubility
+- **Container type selector** with color-coded active states
+- **Welcome modal** with backdrop blur and gradient CTA
+
+### Architecture Updates
+```
+src/
+├── app/
+│   ├── globals.css                  # +10 utility classes & animations
+│   └── page.tsx                     # +PeriodicTable +SolubilityRules tabs, +welcome modal, +localStorage
+├── components/
+│   ├── lab/
+│   │   ├── Beaker.tsx               # +Container type shapes (Erlenmeyer, TestTube, RoundFlask)
+│   │   ├── LabBench.tsx             # +Wash bottle, ring stand, thermometer, goggles
+│   │   └── LabScene.tsx             # +PCFShadowMap fix
+│   └── ui-panels/
+│       ├── PeriodicTable.tsx        # NEW — 47 elements with search/filter/detail
+│       ├── SolubilityRules.tsx      # NEW — 8 rules with color-coded cards
+│       └── InstrumentPanel.tsx      # +Container type selector (Beaker/Erlenmeyer/TestTube/Flask)
+└── lib/
+    └── store/
+        └── lab-store.ts             # +setContainerType action
+```
+
+### Verification Results (agent-browser QA)
+- ✅ Lint passes clean (`bun run lint`)
+- ✅ Page loads HTTP 200
+- ✅ 61 chemicals + 28 reactions loaded
+- ✅ Periodic Table tab works — shows 47 elements, search, category filters, element detail card
+- ✅ Solubility Rules tab works — shows 8 rules with color-coded cards
+- ✅ Container type selector works — Beaker/Erlenmeyer/Test Tube/Round Flask switchable
+- ✅ 3D container shapes change when type switched (Erlenmeyer conical, test tube narrow, round flask spherical)
+- ✅ Welcome modal shows on first visit
+- ✅ Enhanced LabBench with wash bottle, ring stand, thermometer, goggles
+- ✅ Reaction still works after container type switch (HCl + NaOH in Erlenmeyer)
+- ✅ No page errors
+
+### Known Limitations
+1. **PCFSoftShadowMap warnings persist** — R3F internally sets PCFSoftShadowMap before `onCreated` fires. The fix reduces but doesn't eliminate the warnings.
+2. **Round flask liquid rendering** — The spherical liquid geometry for round-bottom flasks is approximate; could use a more precise sphere-filling algorithm.
+3. **Test tube pour spout** — Test tubes don't have pour spouts, but the pour animation still references the rim position.
+4. **AI Assistant network** — May timeout in sandbox (ConnectTimeoutError). Error handling shows fallback.
+
+### Next Steps (Priority Order)
+
+#### P1 — Remaining Polish
+- [ ] Variable pour rate (Torricelli's theorem: v = √(2gh))
+- [ ] Add precipitate/gasEmitting columns to Prisma schema for full persistence
+- [ ] Reaction mechanism explanations in journal
+- [ ] Titration mode with burette
+
+#### P2 — Advanced Features
+- [ ] Multi-step synthesis chains (reaction sequences with intermediate products)
+- [ ] Bunsen burner flame size control (slider)
+- [ ] Gas collection over water (inverted test tube)
+- [ ] Electrolysis cell (with electrodes and battery)
+- [ ] Periodic table element linking to chemical shelf (click element to see if available in lab)
+
+#### P3 — Educational Features
+- [ ] Safety quiz before dangerous experiments
+- [ ] Achievement/badge system for completing experiments
+- [ ] Reaction rate exploration (concentration, temperature, catalyst effects)
+- [ ] Le Chatelier's principle demo (reversible reactions)
+
+#### P4 — Mobile & Accessibility
+- [ ] Responsive layout for tablets (current layout is desktop-focused)
+- [ ] Touch gestures for 3D manipulation
+- [ ] Screen reader labels for 3D elements
+- [ ] High contrast mode
+
+### How to Run
+```bash
+cd /home/z/my-project
+bun run dev          # Start dev server on port 3000
+bun run db:seed      # Re-seed database (61 chemicals, 28 reactions)
+bun run lint         # Check code quality
+bun run db:push      # Push schema changes to SQLite
+```
+
+### Key Files to Know (Round 5 additions)
+- **Periodic Table**: `src/components/ui-panels/PeriodicTable.tsx`
+- **Solubility Rules**: `src/components/ui-panels/SolubilityRules.tsx`
+- **Container type shapes**: `src/components/lab/Beaker.tsx` (Erlenmeyer/TestTube/RoundFlask)
+- **Container type selector**: `src/components/ui-panels/InstrumentPanel.tsx`
+- **Welcome modal**: `src/app/page.tsx`
+- **Enhanced LabBench**: `src/components/lab/LabBench.tsx`
+- **Store update**: `src/lib/store/lab-store.ts` (setContainerType)

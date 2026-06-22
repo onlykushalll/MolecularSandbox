@@ -8,6 +8,8 @@ import { LabJournal } from "@/components/ui-panels/LabJournal";
 import { PresetExperiments } from "@/components/ui-panels/PresetExperiments";
 import { AIAssistant } from "@/components/ui-panels/AIAssistant";
 import { SaveLoadPanel } from "@/components/ui-panels/SaveLoadPanel";
+import { PeriodicTable } from "@/components/ui-panels/PeriodicTable";
+import { SolubilityRulesPanel } from "@/components/ui-panels/SolubilityRules";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -62,7 +64,7 @@ const LabScene = dynamic(
   }
 );
 
-type LeftPanel = "shelf" | "presets";
+type LeftPanel = "shelf" | "presets" | "periodic-table" | "solubility";
 type RightPanel = "instruments" | "safety" | "assistant" | "journal" | "saves";
 
 export default function Home() {
@@ -71,6 +73,7 @@ export default function Home() {
   const [flashKey, setFlashKey] = useState(0);
   const [leftPanel, setLeftPanel] = useState<LeftPanel>("shelf");
   const [rightPanel, setRightPanel] = useState<RightPanel>("instruments");
+  const [showWelcome, setShowWelcome] = useState(false);
   const prevReactionRef = useRef<unknown>(null);
 
   const initializeLab = useLabStore((s) => s.initializeLab);
@@ -290,6 +293,12 @@ export default function Home() {
         ];
         initializeLab(chemData, rxnData, containers);
         setLoading(false);
+        // Show welcome modal on first visit
+        const hasVisited = localStorage.getItem("molecular-sandbox-visited");
+        if (!hasVisited) {
+          setShowWelcome(true);
+          localStorage.setItem("molecular-sandbox-visited", "true");
+        }
         toast.success("Lab initialized", {
           description: `${chemData.length} chemicals · ${rxnData.length} reactions loaded`,
         });
@@ -352,6 +361,8 @@ export default function Home() {
   const leftPanelTabs: { id: LeftPanel; label: string; icon: typeof Beaker }[] = [
     { id: "shelf", label: "Shelf", icon: Beaker },
     { id: "presets", label: "Presets", icon: Sparkles },
+    { id: "periodic-table", label: "Elements", icon: Atom },
+    { id: "solubility", label: "Solubility", icon: BookOpen },
   ];
   const rightPanelTabs: { id: RightPanel; label: string; icon: typeof Bot; badge?: number }[] = [
     { id: "instruments", label: "Lab", icon: FlaskConical },
@@ -379,6 +390,66 @@ export default function Home() {
             "radial-gradient(circle at center, rgba(34, 197, 94, 0.25) 0%, transparent 70%)",
         }}
       />
+
+      {/* Welcome modal */}
+      {showWelcome && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="mx-4 max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-cyan-500 to-blue-600 shadow-lg shadow-emerald-500/30">
+                <FlaskConical className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Welcome to The Molecular Sandbox</h2>
+                <p className="text-sm text-slate-400">A 3D Chemistry Simulator</p>
+              </div>
+            </div>
+
+            <div className="mb-4 space-y-3 text-sm text-slate-300">
+              <p className="font-medium text-white">Get started in 3 easy steps:</p>
+              <div className="flex items-start gap-3 rounded-lg bg-slate-800/50 p-3">
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/30 text-xs font-bold text-emerald-400">1</span>
+                <div>
+                  <p className="font-medium text-emerald-300">Select a beaker</p>
+                  <p className="text-xs text-slate-400">Click a beaker in the 3D scene, or press 1/2/3</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg bg-slate-800/50 p-3">
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-cyan-500/30 text-xs font-bold text-cyan-400">2</span>
+                <div>
+                  <p className="font-medium text-cyan-300">Add chemicals</p>
+                  <p className="text-xs text-slate-400">Use the Chemical Shelf on the left to add reagents</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg bg-slate-800/50 p-3">
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-purple-500/30 text-xs font-bold text-purple-400">3</span>
+                <div>
+                  <p className="font-medium text-purple-300">React & observe</p>
+                  <p className="text-xs text-slate-400">Click React (or R key) to trigger the reaction. Watch the 3D effects!</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-xs text-amber-200">
+              <p className="font-semibold">💡 Pro tips:</p>
+              <ul className="mt-1 space-y-0.5 text-amber-300/80">
+                <li>• Try the Presets tab for one-click experiments</li>
+                <li>• Switch container types (Erlenmeyer, Test Tube, Round Flask)</li>
+                <li>• Check the Elements tab for the Periodic Table</li>
+                <li>• Shift-click a second beaker to pour between them</li>
+                <li>• Press H to heat, T for pH strip, M to mute sounds</li>
+              </ul>
+            </div>
+
+            <Button
+              onClick={() => setShowWelcome(false)}
+              className="w-full bg-gradient-to-r from-emerald-600 to-cyan-600 text-white hover:from-emerald-500 hover:to-cyan-500"
+            >
+              Start Experimenting
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Top header bar — enhanced with animated gradient background */}
       <header className="relative flex h-16 items-center justify-between overflow-hidden border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-4 backdrop-blur">
@@ -507,6 +578,8 @@ export default function Home() {
           <div className="flex-1 overflow-hidden">
             {leftPanel === "shelf" && <ChemicalShelf />}
             {leftPanel === "presets" && <PresetExperiments />}
+            {leftPanel === "periodic-table" && <PeriodicTable />}
+            {leftPanel === "solubility" && <SolubilityRulesPanel />}
           </div>
         </aside>
 

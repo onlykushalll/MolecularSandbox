@@ -19,10 +19,15 @@ import {
   VolumeX,
   Keyboard,
   AlertTriangle,
+  FlaskRound,
+  TestTubes,
+  Beaker as BeakerIcon,
 } from "lucide-react";
+import type { ContainerType } from "@/lib/chemistry/types";
 import { useLabStore } from "@/lib/store/lab-store";
 import { calculatePH, phToColor, phLabel } from "@/lib/chemistry/mixture";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export function InstrumentPanel() {
   const containers = useLabStore((s) => s.containers);
@@ -40,6 +45,7 @@ export function InstrumentPanel() {
   const toggleSound = useLabStore((s) => s.toggleSound);
   const reactionProgress = useLabStore((s) => s.reactionProgress);
   const reactingContainerId = useLabStore((s) => s.reactingContainerId);
+  const setContainerType = useLabStore((s) => s.setContainerType);
 
   const selected = containers.find((c) => c.id === selectedContainerId);
   const secondary = containers.find((c) => c.id === secondaryContainerId);
@@ -131,6 +137,38 @@ export function InstrumentPanel() {
           </div>
         </div>
       </div>
+
+      {/* Container type selector */}
+      {!selected.isBroken && (
+        <div className="border-b border-slate-700/50 bg-slate-800/30 px-4 py-2">
+          <div className="mb-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Container Type</div>
+          <div className="flex gap-1">
+            {([
+              { type: "beaker" as ContainerType, icon: BeakerIcon, label: "Beaker", color: "emerald" },
+              { type: "erlenmeyer" as ContainerType, icon: FlaskConical, label: "Erlenmeyer", color: "amber" },
+              { type: "test_tube" as ContainerType, icon: TestTubes, label: "Test Tube", color: "purple" },
+              { type: "flask" as ContainerType, icon: FlaskRound, label: "Round Flask", color: "cyan" },
+            ]).map(({ type, icon: Icon, label, color }) => (
+              <button
+                key={type}
+                onClick={() => setContainerType(selected.id, type)}
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-all",
+                  selected.type === type
+                    ? color === "emerald" ? "bg-emerald-500/30 text-emerald-300 ring-1 ring-emerald-500/40"
+                      : color === "amber" ? "bg-amber-500/30 text-amber-300 ring-1 ring-amber-500/40"
+                      : color === "purple" ? "bg-purple-500/30 text-purple-300 ring-1 ring-purple-500/40"
+                      : "bg-cyan-500/30 text-cyan-300 ring-1 ring-cyan-500/40"
+                    : "bg-slate-800/50 text-slate-400 hover:bg-slate-700 hover:text-white"
+                )}
+              >
+                <Icon className="h-3 w-3" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Broken beaker warning banner */}
       {selected.isBroken && (

@@ -90,6 +90,7 @@ interface LabStore {
   updateContainer: (id: string, updates: Partial<ContainerState>) => void;
   selectContainer: (id: string | null, additive?: boolean) => void;
   setHoveredContainer: (id: string | null) => void;
+  setContainerType: (id: string, containerType: import("@/lib/chemistry/types").ContainerType) => void;
 
   // Actions — chemicals
   selectChemical: (id: string | null) => void;
@@ -283,6 +284,13 @@ export const useLabStore = create<LabStore>((set, get) => ({
       return { selectedContainerId: id, secondaryContainerId: null };
     }),
   setHoveredContainer: (id) => set({ hoveredContainerId: id }),
+
+  setContainerType: (id, containerType) =>
+    set((state) => ({
+      containers: state.containers.map((c) =>
+        c.id === id ? { ...c, type: containerType } : c
+      ),
+    })),
 
   selectChemical: (id) => set({ selectedChemicalId: id }),
   setDragVolume: (volume) => set({ dragVolume: volume }),

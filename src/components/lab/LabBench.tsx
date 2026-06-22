@@ -257,6 +257,92 @@ export function LabBench() {
           <meshStandardMaterial color="#475569" metalness={0.6} roughness={0.4} />
         </mesh>
       </group>
+
+      {/* Wash bottle on bench (right side) */}
+      <group position={[3.2, -1.1, 0.5]} rotation={[0, 0.3, 0]}>
+        {/* Body */}
+        <mesh castShadow>
+          <cylinderGeometry args={[0.08, 0.1, 0.25, 16]} />
+          <meshPhysicalMaterial color="#e0f2fe" transparent opacity={0.5} roughness={0.1} transmission={0.3} />
+        </mesh>
+        {/* Spout */}
+        <mesh position={[0.05, 0.18, 0]} rotation={[0, 0, -0.6]}>
+          <cylinderGeometry args={[0.015, 0.02, 0.15, 8]} />
+          <meshStandardMaterial color="#e0f2fe" transparent opacity={0.5} />
+        </mesh>
+        {/* Liquid */}
+        <mesh position={[0, -0.02, 0]}>
+          <cylinderGeometry args={[0.07, 0.09, 0.18, 16]} />
+          <meshStandardMaterial color="#bfdbfe" transparent opacity={0.6} />
+        </mesh>
+      </group>
+
+      {/* Ring stand on bench (right side) */}
+      <group position={[2.5, -1.1, -0.3]}>
+        {/* Base plate */}
+        <mesh position={[0, 0.01, 0]} castShadow>
+          <cylinderGeometry args={[0.18, 0.18, 0.02, 16]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.7} roughness={0.3} />
+        </mesh>
+        {/* Vertical rod */}
+        <mesh position={[0, 0.35, 0]} castShadow>
+          <cylinderGeometry args={[0.01, 0.01, 0.7, 8]} />
+          <meshStandardMaterial color="#64748b" metalness={0.8} roughness={0.2} />
+        </mesh>
+        {/* Ring clamp */}
+        <mesh position={[0, 0.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.12, 0.008, 8, 24]} />
+          <meshStandardMaterial color="#64748b" metalness={0.8} roughness={0.2} />
+        </mesh>
+        {/* Clamp screw */}
+        <mesh position={[0.12, 0.5, 0]}>
+          <cylinderGeometry args={[0.012, 0.012, 0.06, 6]} />
+          <meshStandardMaterial color="#9ca3af" metalness={0.9} roughness={0.1} />
+        </mesh>
+      </group>
+
+      {/* Thermometer on bench */}
+      <group position={[-2.5, -1.1, 0.8]} rotation={[0, 0.5, 0]}>
+        {/* Glass tube */}
+        <mesh>
+          <cylinderGeometry args={[0.01, 0.01, 0.3, 8]} />
+          <meshPhysicalMaterial color="#ffffff" transparent opacity={0.3} roughness={0.05} transmission={0.9} />
+        </mesh>
+        {/* Mercury bulb */}
+        <mesh position={[0, -0.16, 0]}>
+          <sphereGeometry args={[0.015, 12, 12]} />
+          <meshStandardMaterial color="#dc2626" emissive="#dc2626" emissiveIntensity={0.3} />
+        </mesh>
+        {/* Mercury column */}
+        <mesh position={[0, -0.06, 0]}>
+          <cylinderGeometry args={[0.004, 0.004, 0.18, 6]} />
+          <meshStandardMaterial color="#dc2626" emissive="#dc2626" emissiveIntensity={0.2} />
+        </mesh>
+      </group>
+
+      {/* Safety goggles on bench */}
+      <group position={[-1, -1.1, 1.5]} rotation={[0.3, 0.2, 0]}>
+        {/* Lens left */}
+        <mesh position={[-0.04, 0.01, 0]}>
+          <sphereGeometry args={[0.035, 16, 16, 0, Math.PI]} />
+          <meshPhysicalMaterial color="#bfdbfe" transparent opacity={0.3} roughness={0.02} transmission={0.9} />
+        </mesh>
+        {/* Lens right */}
+        <mesh position={[0.04, 0.01, 0]}>
+          <sphereGeometry args={[0.035, 16, 16, 0, Math.PI]} />
+          <meshPhysicalMaterial color="#bfdbfe" transparent opacity={0.3} roughness={0.02} transmission={0.9} />
+        </mesh>
+        {/* Bridge */}
+        <mesh position={[0, 0.01, 0.03]}>
+          <boxGeometry args={[0.03, 0.008, 0.01]} />
+          <meshStandardMaterial color="#374151" />
+        </mesh>
+        {/* Strap */}
+        <mesh position={[0, 0.01, -0.01]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.06, 0.004, 4, 16, Math.PI]} />
+          <meshStandardMaterial color="#374151" />
+        </mesh>
+      </group>
     </group>
   );
 }

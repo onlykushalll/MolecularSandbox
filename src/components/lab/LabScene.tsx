@@ -69,7 +69,10 @@ export function LabScene() {
     <Canvas
       shadows
       dpr={[1, 2]}
-      gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
+      gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, useLegacyLights: false }}
+      onCreated={({ gl }) => {
+        gl.shadowMap.type = THREE.PCFShadowMap;
+      }}
       camera={{ position: [0, 2.5, 6], fov: 45 }}
       style={{
         background:
