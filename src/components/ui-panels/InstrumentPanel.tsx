@@ -14,6 +14,11 @@ import {
   Droplets,
   ArrowRightLeft,
   Snowflake,
+  TestTube,
+  Volume2,
+  VolumeX,
+  Keyboard,
+  AlertTriangle,
 } from "lucide-react";
 import { useLabStore } from "@/lib/store/lab-store";
 import { calculatePH, phToColor, phLabel } from "@/lib/chemistry/mixture";
@@ -29,6 +34,12 @@ export function InstrumentPanel() {
   const setContainerHeating = useLabStore((s) => s.setContainerHeating);
   const startPourAnimation = useLabStore((s) => s.startPourAnimation);
   const lastReactionResult = useLabStore((s) => s.lastReactionResult);
+  const showPHStrip = useLabStore((s) => s.showPHStrip);
+  const togglePHStrip = useLabStore((s) => s.togglePHStrip);
+  const soundEnabled = useLabStore((s) => s.soundEnabled);
+  const toggleSound = useLabStore((s) => s.toggleSound);
+  const reactionProgress = useLabStore((s) => s.reactionProgress);
+  const reactingContainerId = useLabStore((s) => s.reactingContainerId);
 
   const selected = containers.find((c) => c.id === selectedContainerId);
   const secondary = containers.find((c) => c.id === secondaryContainerId);
@@ -45,11 +56,14 @@ export function InstrumentPanel() {
           Click a beaker in the scene to view instrument readings.
         </p>
         <div className="mt-3 rounded-lg border border-slate-700/50 bg-slate-800/30 p-3 text-[11px] text-slate-400">
-          <p className="mb-1 font-semibold text-slate-300">Tips</p>
+          <p className="mb-1.5 flex items-center gap-1.5 font-semibold text-slate-300">
+            <Keyboard className="h-3 w-3" /> Keyboard Shortcuts
+          </p>
           <ul className="space-y-1">
-            <li>• <kbd className="rounded bg-slate-700 px-1">Click</kbd> select beaker</li>
-            <li>• <kbd className="rounded bg-slate-700 px-1">Shift+Click</kbd> second beaker to pour</li>
-            <li>• <kbd className="rounded bg-slate-700 px-1">Drag</kbd> rotate · <kbd className="rounded bg-slate-700 px-1">Scroll</kbd> zoom</li>
+            <li><kbd className="rounded bg-slate-700 px-1">1/2/3</kbd> select beaker</li>
+            <li><kbd className="rounded bg-slate-700 px-1">R</kbd> react · <kbd className="rounded bg-slate-700 px-1">H</kbd> heat · <kbd className="rounded bg-slate-700 px-1">E</kbd> empty</li>
+            <li><kbd className="rounded bg-slate-700 px-1">P</kbd> pour · <kbd className="rounded bg-slate-700 px-1">T</kbd> pH strip</li>
+            <li><kbd className="rounded bg-slate-700 px-1">M</kbd> mute · <kbd className="rounded bg-slate-700 px-1">Drag</kbd> rotate · <kbd className="rounded bg-slate-700 px-1">Scroll</kbd> zoom</li>
           </ul>
         </div>
       </Card>
@@ -80,15 +94,68 @@ export function InstrumentPanel() {
                 {selected.id.toUpperCase()}
               </h2>
               <p className="text-[10px] text-slate-400">
-                {selected.isHeating ? "🔥 Heating" : "⚪ Idle"} · {selected.contents.length} contents
+                {selected.isBroken ? "⚠ BROKEN" : selected.isHeating ? "🔥 Heating" : "⚪ Idle"} · {selected.contents.length} contents
               </p>
             </div>
           </div>
-          <Badge variant="outline" className="border-slate-600 text-slate-300">
-            {selected.capacity} mL max
-          </Badge>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => togglePHStrip()}
+              className={
+                showPHStrip
+                  ? "h-7 bg-pink-500/20 text-pink-300 hover:bg-pink-500/30"
+                  : "h-7 text-slate-400 hover:bg-slate-800 hover:text-white"
+              }
+              title="Toggle pH test strip (T)"
+            >
+              <TestTube className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => toggleSound()}
+              className={
+                soundEnabled
+                  ? "h-7 text-emerald-300 hover:bg-slate-800"
+                  : "h-7 text-slate-500 hover:bg-slate-800"
+              }
+              title="Toggle sound (M)"
+            >
+              {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+            </Button>
+            <Badge variant="outline" className="border-slate-600 text-slate-300">
+              {selected.capacity} mL max
+            </Badge>
+          </div>
         </div>
       </div>
+
+      {/* Broken beaker warning banner */}
+      {selected.isBroken && (
+        <div className="flex items-center gap-2 border-b border-red-500/30 bg-red-950/40 px-4 py-2 text-xs text-red-200">
+          <AlertTriangle className="h-4 w-4 animate-pulse" />
+          <span className="font-medium">This beaker is broken!</span>
+          <span className="text-red-300/70">Empty and reset to use again.</span>
+        </div>
+      )}
+
+      {/* Reaction progress bar */}
+      {reactingContainerId === selected.id && reactionProgress > 0 && (
+        <div className="border-b border-amber-500/30 bg-amber-950/30 px-4 py-1.5 fade-in-up">
+          <div className="flex items-center gap-2">
+            <Zap className="h-3 w-3 animate-pulse text-amber-400" />
+            <span className="text-[10px] font-medium text-amber-300">Reacting...</span>
+            <div className="ml-auto h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700">
+              <div
+                className="progress-shine h-full rounded-full bg-gradient-to-r from-amber-500 to-yellow-300 transition-all duration-100"
+                style={{ width: `${reactionProgress * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3 p-4">
         {/* Temperature gauge */}
@@ -342,7 +409,7 @@ export function InstrumentPanel() {
         <div className="grid grid-cols-2 gap-2">
           <Button
             onClick={() => triggerReaction(selected.id)}
-            disabled={selected.contents.length === 0}
+            disabled={selected.contents.length === 0 || selected.isBroken}
             className="bg-emerald-600 hover:bg-emerald-500"
             size="sm"
           >
@@ -351,6 +418,7 @@ export function InstrumentPanel() {
           </Button>
           <Button
             onClick={() => setContainerHeating(selected.id, !selected.isHeating)}
+            disabled={selected.isBroken}
             variant={selected.isHeating ? "destructive" : "outline"}
             size="sm"
             className={

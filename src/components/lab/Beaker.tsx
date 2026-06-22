@@ -1,11 +1,11 @@
 "use client";
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Edges, Text, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { useLabStore } from "@/lib/store/lab-store";
-import type { ContainerState } from "@/lib/chemistry/types";
-import { mixHexColors } from "@/lib/chemistry/mixture";
+import type { ContainerState, ContainerContent, ChemicalData } from "@/lib/chemistry/types";
+import { mixHexColors, calculatePH, phToColor } from "@/lib/chemistry/mixture";
 
 interface BeakerProps {
   container: ContainerState;
@@ -15,6 +15,9 @@ export function Beaker({ container }: BeakerProps) {
   const groupRef = useRef<THREE.Group>(null);
   const liquidRef = useRef<THREE.Mesh>(null);
   const wobbleRef = useRef(0);
+  // Smoothed color (lerps toward target for color-change animation during reactions)
+  const smoothedColor = useRef(new THREE.Color("#88ccff"));
+  const smoothedOpacity = useRef(0.3);
 
   const {
     selectContainer,
@@ -23,10 +26,14 @@ export function Beaker({ container }: BeakerProps) {
     secondaryContainerId,
     hoveredContainerId,
     chemicalsMap,
+    showPHStrip,
+    reactingContainerId,
+    reactionProgress,
   } = useLabStore();
   const isSelected = selectedContainerId === container.id;
   const isSecondary = secondaryContainerId === container.id;
   const isHovered = hoveredContainerId === container.id;
+  const isReacting = reactingContainerId === container.id && reactionProgress > 0;
 
   // Calculate fill level
   const totalVolume = container.contents.reduce((s, c) => s + c.volume, 0);
@@ -83,9 +90,17 @@ export function Beaker({ container }: BeakerProps) {
 
   useFrame((state, delta) => {
     wobbleRef.current += delta;
+    // Smooth color transition (lerp toward target color)
+    const targetColor = new THREE.Color(liquidColor);
+    smoothedColor.current.lerp(targetColor, Math.min(1, delta * 4));
+    smoothedOpacity.current += (liquidOpacity - smoothedOpacity.current) * Math.min(1, delta * 4);
     if (liquidRef.current && liquidHeight > 0) {
       const wobble = Math.sin(wobbleRef.current * 3) * 0.005 * fillRatio;
       liquidRef.current.scale.y = Math.max(0.01, liquidHeight + wobble);
+      // Apply smoothed color to liquid material
+      const mat = liquidRef.current.material as THREE.MeshPhysicalMaterial;
+      if (mat.color) mat.color.copy(smoothedColor.current);
+      mat.opacity = smoothedOpacity.current;
     }
     if (groupRef.current && container.isHeating) {
       // Slight vibration when heating
@@ -93,6 +108,11 @@ export function Beaker({ container }: BeakerProps) {
         container.position[1] + Math.sin(wobbleRef.current * 20) * 0.002;
     }
   });
+
+  // If the beaker is broken, render broken-glass shards and no liquid
+  if (container.isBroken) {
+    return <BrokenBeaker container={container} isSelected={isSelected} isHovered={isHovered} />;
+  }
 
   // Selection ring color
   const ringColor = isSecondary ? "#f59e0b" : isSelected ? "#22c55e" : isHovered ? "#88ccff" : null;
@@ -181,6 +201,25 @@ export function Beaker({ container }: BeakerProps) {
             emissiveIntensity={container.temperature > 50 ? 0.1 : 0}
           />
         </mesh>
+      )}
+
+      {/* Reaction progress ring (top of beaker) */}
+      {isReacting && (
+        <mesh position={[0, height / 2 + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[radius * 0.95, radius * 1.05, 64, 1, 0, reactionProgress * Math.PI * 2]} />
+          <meshBasicMaterial color="#fbbf24" transparent opacity={0.85} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+
+      {/* pH test strip — dips into beaker from above */}
+      {showPHStrip && isSelected && liquidHeight > 0.01 && (
+        <PHStrip
+          radius={radius}
+          height={height}
+          liquidTopY={-height / 2 + liquidHeight}
+          contents={container.contents}
+          chemicalsMap={chemicalsMap}
+        />
       )}
 
       {/* Liquid surface (meniscus) */}
@@ -580,6 +619,239 @@ function Bubbles({
           />
         </mesh>
       ))}
+    </group>
+  );
+}
+
+// ===== Broken Beaker =====
+function BrokenBeaker({
+  container,
+  isSelected,
+  isHovered,
+}: {
+  container: ContainerState;
+  isSelected: boolean;
+  isHovered: boolean;
+}) {
+  const radius = 0.4 + (container.capacity / 400) * 0.2;
+  const height = 1.0 + (container.capacity / 400) * 0.4;
+  const { selectContainer, setHoveredContainer } = useLabStore();
+
+  // Pre-compute random shard positions (jagged bottom rim + scattered pieces)
+  const shards = useMemo(() => {
+    return Array.from({ length: 8 }).map((_, i) => {
+      const angle = (i / 8) * Math.PI * 2 + Math.random() * 0.4;
+      const dist = radius * (0.3 + Math.random() * 0.8);
+      return {
+        x: Math.cos(angle) * dist,
+        z: Math.sin(angle) * dist,
+        rotX: Math.random() * Math.PI,
+        rotZ: Math.random() * Math.PI,
+        size: 0.08 + Math.random() * 0.12,
+        y: -height / 2 + Math.random() * 0.05,
+      };
+    });
+  }, [radius, height]);
+
+  // Pooled liquid on the bench (if any was inside when broken)
+  const spilledVolume = container.contents.reduce((s, c) => s + c.volume, 0);
+  const puddleRadius = Math.min(radius * 1.8, radius + Math.sqrt(spilledVolume) * 0.03);
+  const puddleColor = (() => {
+    const cd = container.contents.map((c) => {
+      const chem = useLabStore.getState().chemicalsMap.get(c.chemicalId);
+      return { hex: chem?.hexColor || "#88ccff", moles: c.moles };
+    });
+    if (cd.length === 0) return "#88ccff";
+    return mixHexColors(cd).hex;
+  })();
+
+  return (
+    <group
+      position={container.position}
+      rotation={container.rotation}
+      onClick={(e) => {
+        e.stopPropagation();
+        selectContainer(container.id, e.shiftKey);
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        setHoveredContainer(container.id);
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerOut={() => {
+        setHoveredContainer(null);
+        document.body.style.cursor = "default";
+      }}
+    >
+      {/* Broken beaker base (jagged stump) */}
+      <mesh position={[0, -height / 2 + 0.1, 0]}>
+        <cylinderGeometry args={[radius * 0.95, radius * 0.95, 0.2, 32, 1, true]} />
+        <meshPhysicalMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.18}
+          roughness={0.05}
+          transmission={0.9}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {/* Jagged top edge — irregular triangles */}
+      {Array.from({ length: 16 }).map((_, i) => {
+        const angle = (i / 16) * Math.PI * 2;
+        const jagHeight = 0.05 + Math.random() * 0.15;
+        return (
+          <mesh
+            key={i}
+            position={[
+              Math.cos(angle) * radius * 0.95,
+              -height / 2 + 0.2 + jagHeight / 2,
+              Math.sin(angle) * radius * 0.95,
+            ]}
+            rotation={[0, -angle, 0]}
+          >
+            <coneGeometry args={[0.06, jagHeight, 4]} />
+            <meshPhysicalMaterial
+              color="#ffffff"
+              transparent
+              opacity={0.2}
+              transmission={0.85}
+              roughness={0.05}
+            />
+          </mesh>
+        );
+      })}
+      {/* Shards scattered around */}
+      {shards.map((s, i) => (
+        <mesh
+          key={`shard-${i}`}
+          position={[s.x, s.y, s.z]}
+          rotation={[s.rotX, 0, s.rotZ]}
+          castShadow
+        >
+          <tetrahedronGeometry args={[s.size, 0]} />
+          <meshPhysicalMaterial
+            color="#ffffff"
+            transparent
+            opacity={0.3}
+            transmission={0.7}
+            roughness={0.1}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+      {/* Puddle of spilled liquid */}
+      {spilledVolume > 0.5 && (
+        <mesh position={[0, -height / 2 - 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[puddleRadius, 32]} />
+          <meshStandardMaterial
+            color={puddleColor}
+            transparent
+            opacity={0.7}
+            roughness={0.2}
+            metalness={0.1}
+          />
+        </mesh>
+      )}
+      {/* Label */}
+      <Text
+        position={[0, -height / 2 - 0.25, radius + 0.01]}
+        fontSize={0.08}
+        color="#dc2626"
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.003}
+        outlineColor="#ffffff"
+      >
+        {`${container.id.toUpperCase()} ⚠ BROKEN`}
+      </Text>
+      {/* Selection ring (red for broken) */}
+      {isSelected && (
+        <mesh position={[0, -height / 2 - 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[radius * 1.05, radius * 1.25, 64]} />
+          <meshBasicMaterial color="#dc2626" transparent opacity={0.6} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      {/* Hover tooltip */}
+      {isHovered && !isSelected && (
+        <Html position={[0, height / 2 + 0.3, 0]} center distanceFactor={6}>
+          <div className="pointer-events-none select-none whitespace-nowrap rounded-md border border-red-500/50 bg-red-950/90 px-2.5 py-1 text-[10px] font-medium text-red-100 shadow-lg backdrop-blur">
+            {container.id.toUpperCase()} · BROKEN · Empty and reset
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
+// ===== pH Test Strip =====
+function PHStrip({
+  radius,
+  height,
+  liquidTopY,
+  contents,
+  chemicalsMap,
+}: {
+  radius: number;
+  height: number;
+  liquidTopY: number;
+  contents: ContainerContent[];
+  chemicalsMap: Map<string, ChemicalData>;
+}) {
+  const stripRef = useRef<THREE.Group>(null);
+  const indicatorRef = useRef<THREE.Mesh>(null);
+  const pH = calculatePH(contents, chemicalsMap);
+  const pHColor = phToColor(pH);
+
+  // Animate dipping into the beaker
+  useEffect(() => {
+    if (!stripRef.current) return;
+    stripRef.current.position.y = height / 2 + 0.5; // start above
+    let raf: number;
+    const start = performance.now();
+    const duration = 800;
+    const targetY = liquidTopY - 0.15; // dipped into liquid
+    const startY = height / 2 + 0.5;
+    const animate = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      // Ease in-out
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      if (stripRef.current) {
+        stripRef.current.position.y = startY + (targetY - startY) * eased;
+      }
+      if (t < 1) raf = requestAnimationFrame(animate);
+    };
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
+  }, [height, liquidTopY]);
+
+  return (
+    <group ref={stripRef} position={[radius * 0.3, height / 2 + 0.5, 0]}>
+      {/* Paper strip — long thin rectangle */}
+      <mesh>
+        <boxGeometry args={[0.08, 0.7, 0.005]} />
+        <meshStandardMaterial color="#fff8e7" roughness={0.9} />
+      </mesh>
+      {/* Indicator pad at the tip — colored by pH */}
+      <mesh ref={indicatorRef} position={[0, -0.3, 0.003]}>
+        <boxGeometry args={[0.07, 0.12, 0.006]} />
+        <meshStandardMaterial
+          color={pHColor}
+          emissive={pHColor}
+          emissiveIntensity={0.2}
+          roughness={0.5}
+        />
+      </mesh>
+      {/* Strip holder (small ring at top) */}
+      <mesh position={[0, 0.36, 0]}>
+        <torusGeometry args={[0.05, 0.012, 8, 16]} />
+        <meshStandardMaterial color="#888888" metalness={0.8} roughness={0.3} />
+      </mesh>
+      {/* pH label floating beside strip */}
+      <Html position={[0.18, 0.1, 0]} center distanceFactor={5}>
+        <div className="pointer-events-none select-none whitespace-nowrap rounded-md border border-slate-600/50 bg-slate-900/95 px-2 py-1 text-[10px] font-bold shadow-lg backdrop-blur">
+          <span style={{ color: pHColor }}>pH {pH.toFixed(1)}</span>
+        </div>
+      </Html>
     </group>
   );
 }

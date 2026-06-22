@@ -24,7 +24,8 @@ export type GHSHazard =
   | "harmful"
   | "health_hazard"
   | "environmental"
-  | "irritant";
+  | "irritant"
+  | "water_reactive";
 
 export interface ChemicalData {
   id: string;

@@ -10,6 +10,8 @@ import type {
   JournalEntry,
 } from "@/lib/chemistry/types";
 import { volumeToMoles, molesToVolume } from "@/lib/chemistry/mixture";
+import { checkSolubility, getPrecipitateColor } from "@/lib/chemistry/solubility";
+import { getSoundManager } from "@/lib/sound/sound-manager";
 
 interface PPEState {
   goggles: boolean;
@@ -54,6 +56,20 @@ interface LabStore {
   showReactionInfo: boolean;
   activeReaction: ReactionData | null;
   lastReactionResult: ReactionResult | null;
+
+  // Reaction progress (animation)
+  reactingContainerId: string | null;
+  reactionProgress: number; // 0..1, decays after reaction
+
+  // pH strip mode — when ON, a 3D paper strip appears in selected beaker
+  showPHStrip: boolean;
+
+  // Audio
+  soundEnabled: boolean;
+
+  // Glass breaking — tracks the moment a beaker breaks (for VFX)
+  lastBrokenAt: number | null;
+  lastBrokenContainerId: string | null;
 
   // Journal
   journalEntries: JournalEntry[];
@@ -100,6 +116,7 @@ interface LabStore {
   // Actions — reaction
   processReaction: (containerId: string, result: ReactionResult) => void;
   triggerReaction: (containerId: string) => void;
+  setReactionProgress: (progress: number) => void;
 
   // Actions — safety
   togglePPE: (type: keyof PPEState) => void;
@@ -113,6 +130,9 @@ interface LabStore {
   toggleLabJournal: () => void;
   toggleSafetyPanel: () => void;
   setCameraTarget: (target: [number, number, number] | null) => void;
+  togglePHStrip: () => void;
+  toggleSound: () => void;
+  setSoundEnabled: (enabled: boolean) => void;
 
   // Actions — journal
   addJournalEntry: (
@@ -210,6 +230,14 @@ export const useLabStore = create<LabStore>((set, get) => ({
   showReactionInfo: false,
   activeReaction: null,
   lastReactionResult: null,
+
+  reactingContainerId: null,
+  reactionProgress: 0,
+
+  showPHStrip: false,
+  soundEnabled: true,
+  lastBrokenAt: null,
+  lastBrokenContainerId: null,
 
   journalEntries: [],
 
@@ -343,6 +371,8 @@ export const useLabStore = create<LabStore>((set, get) => ({
     if (!source) return;
     const totalSourceVolume = source.contents.reduce((s, c) => s + c.volume, 0);
     if (totalSourceVolume <= 0) return;
+    // Play pour sound
+    if (get().soundEnabled) getSoundManager().play("pour");
     // Torricelli's theorem: v = √(2gh) → flow rate proportional to √height
     // Use a 2-second animation for visual clarity
     get().startPour(sourceId, targetId);
@@ -406,6 +436,11 @@ export const useLabStore = create<LabStore>((set, get) => ({
       }
     }
 
+    // Play drop sound
+    if (get().soundEnabled) {
+      getSoundManager().play("drop");
+    }
+
     // Auto-trigger reaction if enabled and a matching reaction exists
     if (autoReact) {
       const presentIds = new Set(newContents.map((c) => c.chemicalId));
@@ -430,16 +465,36 @@ export const useLabStore = create<LabStore>((set, get) => ({
       ),
     })),
 
-  setContainerHeating: (containerId, isHeating) =>
-    set((state) => ({
-      containers: state.containers.map((c) =>
+  setContainerHeating: (containerId, isHeating) => {
+    const state = get();
+    const container = state.containers.find((c) => c.id === containerId);
+    // Don't allow heating a broken beaker
+    if (isHeating && container?.isBroken) return;
+    set((s) => ({
+      containers: s.containers.map((c) =>
         c.id === containerId ? { ...c, isHeating } : c
       ),
-    })),
+    }));
+    // Manage hiss sound (Bunsen burner)
+    const sm = getSoundManager();
+    if (isHeating) {
+      if (get().soundEnabled) sm.startHiss();
+      if (get().soundEnabled) sm.startBubbling();
+    } else {
+      // Only stop if no other beaker is heating
+      const stillHeating = get().containers.some((c) => c.id !== containerId && c.isHeating);
+      if (!stillHeating) {
+        sm.stopHiss();
+        sm.stopBubbling();
+      }
+    }
+  },
 
   heatingTick: () => {
     const state = get();
     let changed = false;
+    let brokenNow = false;
+    let brokenContainerId: string | null = null;
     const newContainers = state.containers.map((c) => {
       // Decay gas emission intensity over time
       let gasEmitting = c.gasEmitting;
@@ -473,8 +528,29 @@ export const useLabStore = create<LabStore>((set, get) => ({
       // Heat up — rate depends on volume (smaller heats faster)
       const totalVolume = c.contents.reduce((s, cc) => s + cc.volume, 0);
       const heatRate = Math.max(0.5, 3 - totalVolume / 100);
+      const prevTemp = c.temperature;
       const newTemp = Math.min(c.temperature + heatRate, maxBP + 5);
       if (newTemp !== c.temperature) changed = true;
+
+      // Thermal shock detection — rapid temperature rise > 60°C in one tick
+      // (heatingTick runs every 500ms, so this is a very fast spike)
+      if (!c.isBroken && prevTemp < 50 && newTemp - prevTemp >= 25 && totalVolume > 30) {
+        // Glass breaks on extreme thermal shock (rare but possible)
+        // Only trigger if temperature delta is dramatic AND beaker has substantial liquid mass
+        if (newTemp > 80 && Math.random() < 0.15) {
+          brokenNow = true;
+          brokenContainerId = c.id;
+          changed = true;
+          return {
+            ...c,
+            temperature: newTemp,
+            isBroken: true,
+            isHeating: false,
+            gasEmitting,
+          };
+        }
+      }
+
       // Evaporate a small amount when at boiling
       let newContents = c.contents;
       if (newTemp >= maxBP - 1) {
@@ -499,6 +575,20 @@ export const useLabStore = create<LabStore>((set, get) => ({
       return { ...c, temperature: newTemp, contents: newContents, gasEmitting };
     });
     if (changed) set({ containers: newContainers });
+
+    // If a beaker broke this tick, play breaking sound + alert
+    if (brokenNow && brokenContainerId) {
+      const sm = getSoundManager();
+      if (get().soundEnabled) sm.play("break");
+      sm.stopHiss();
+      sm.stopBubbling();
+      get().addSafetyAlert({
+        type: "explosion",
+        message: `💥 ${brokenContainerId.toUpperCase()} broke from thermal shock!`,
+        severity: "danger",
+      });
+      set({ lastBrokenAt: Date.now(), lastBrokenContainerId: brokenContainerId });
+    }
   },
 
   processReaction: (containerId, result) => {
@@ -566,13 +656,18 @@ export const useLabStore = create<LabStore>((set, get) => ({
         const maxBoilingPoint = Math.max(...liquidBoilingPoints, 100);
         const cappedTemp = Math.min(newTemp, maxBoilingPoint + 5);
 
-        // Track VFX state: ALL solid products from precipitation reactions become precipitate
+        // Track VFX state: only INSOLUBLE solid products become precipitate (solubility rules)
         let precipitate = c.precipitate ? [...c.precipitate] : null;
         if (result.precipitateFormed) {
           if (!precipitate) precipitate = [];
           for (const product of result.productsProduced) {
             const chem = state.chemicalsMap.get(product.chemicalId);
             if (!chem || chem.stateAtSTP !== "solid") continue;
+            // Apply solubility rules: only add as precipitate if insoluble
+            const sol = checkSolubility(chem.formula);
+            if (sol.solubility === "soluble") continue;
+            // Use proper precipitate color (overrides DB hexColor)
+            const precipColor = getPrecipitateColor(chem.formula, chem.hexColor);
             const existing = precipitate.find((p) => p.chemicalId === product.chemicalId);
             if (existing) {
               existing.moles += product.moles;
@@ -580,7 +675,7 @@ export const useLabStore = create<LabStore>((set, get) => ({
               precipitate.push({
                 chemicalId: product.chemicalId,
                 moles: product.moles,
-                color: chem.hexColor,
+                color: precipColor,
               });
             }
           }
@@ -607,7 +702,16 @@ export const useLabStore = create<LabStore>((set, get) => ({
       lastReactionResult: result,
       activeReaction: result.reaction,
       showReactionInfo: true,
+      reactingContainerId: containerId,
+      reactionProgress: 1,
     });
+
+    // Play reaction sound
+    if (get().soundEnabled) {
+      const sm = getSoundManager();
+      sm.play("reaction");
+      if (result.gasEvolved) sm.startBubbling();
+    }
 
     if (result.temperatureChange > 20) {
       get().addSafetyAlert({
@@ -631,6 +735,12 @@ export const useLabStore = create<LabStore>((set, get) => ({
       result.temperatureChange
     );
   },
+
+  setReactionProgress: (progress) =>
+    set((state) => ({
+      reactionProgress: progress,
+      reactingContainerId: progress <= 0 ? null : state.reactingContainerId,
+    })),
 
   triggerReaction: (containerId) => {
     const state = get();
@@ -710,9 +820,13 @@ export const useLabStore = create<LabStore>((set, get) => ({
           const rc = state.chemicalsMap.get(r.chemicalId);
           return rc && (rc.stateAtSTP === "liquid" || rc.stateAtSTP === "solid");
         });
+        // Use solubility rules: only insoluble solids count as precipitates
         if (allLiquid) {
-          precipitateFormed = true;
-          precipitateChemicalId = product.chemicalId;
+          const sol = checkSolubility(chem.formula);
+          if (sol.solubility !== "soluble") {
+            precipitateFormed = true;
+            precipitateChemicalId = product.chemicalId;
+          }
         }
       }
     }
@@ -761,6 +875,22 @@ export const useLabStore = create<LabStore>((set, get) => ({
   toggleSafetyPanel: () =>
     set((state) => ({ showSafetyPanel: !state.showSafetyPanel })),
   setCameraTarget: (target) => set({ cameraTarget: target }),
+  togglePHStrip: () => set((state) => ({ showPHStrip: !state.showPHStrip })),
+  toggleSound: () => {
+    const next = !get().soundEnabled;
+    set({ soundEnabled: next });
+    const sm = getSoundManager();
+    sm.setMuted(!next);
+    if (!next) {
+      sm.stopHiss();
+      sm.stopBubbling();
+    }
+  },
+  setSoundEnabled: (enabled) => {
+    set({ soundEnabled: enabled });
+    const sm = getSoundManager();
+    sm.setMuted(!enabled);
+  },
 
   addJournalEntry: (text, reaction, equation, temperatureChange) =>
     set((state) => ({
@@ -782,7 +912,12 @@ export const useLabStore = create<LabStore>((set, get) => ({
   setDragging: (isDragging, chemicalId = null) =>
     set({ isDragging, draggedChemicalId: chemicalId }),
 
-  resetLab: () =>
+  resetLab: () => {
+    // Stop ambient sounds
+    const sm = getSoundManager();
+    sm.stopHiss();
+    sm.stopBubbling();
+    if (get().soundEnabled) sm.play("click");
     set({
       containers: defaultContainers,
       selectedContainerId: null,
@@ -797,5 +932,10 @@ export const useLabStore = create<LabStore>((set, get) => ({
       lastReactionResult: null,
       activeReaction: null,
       showReactionInfo: false,
-    }),
+      reactingContainerId: null,
+      reactionProgress: 0,
+      lastBrokenAt: null,
+      lastBrokenContainerId: null,
+    });
+  },
 }));

@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { ChemicalShelf } from "@/components/ui-panels/ChemicalShelf";
 import { InstrumentPanel } from "@/components/ui-panels/InstrumentPanel";
 import { SafetyPanel } from "@/components/ui-panels/SafetyPanel";
@@ -22,11 +22,15 @@ import {
   Save,
   Github,
   Atom,
+  Volume2,
+  VolumeX,
+  Zap,
 } from "lucide-react";
 import { useLabStore } from "@/lib/store/lab-store";
 import type { ChemicalData, ReactionData, ContainerState } from "@/lib/chemistry/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getSoundManager } from "@/lib/sound/sound-manager";
 
 const LabScene = dynamic(
   () => import("@/components/lab/LabScene").then((m) => m.LabScene),
@@ -80,6 +84,17 @@ export default function Home() {
   const selectedContainerId = useLabStore((s) => s.selectedContainerId);
   const secondaryContainerId = useLabStore((s) => s.secondaryContainerId);
   const containers = useLabStore((s) => s.containers);
+  const selectContainer = useLabStore((s) => s.selectContainer);
+  const triggerReaction = useLabStore((s) => s.triggerReaction);
+  const setContainerHeating = useLabStore((s) => s.setContainerHeating);
+  const emptyContainer = useLabStore((s) => s.emptyContainer);
+  const startPourAnimation = useLabStore((s) => s.startPourAnimation);
+  const togglePHStrip = useLabStore((s) => s.togglePHStrip);
+  const toggleSound = useLabStore((s) => s.toggleSound);
+  const soundEnabled = useLabStore((s) => s.soundEnabled);
+  const reactionProgress = useLabStore((s) => s.reactionProgress);
+  const reactingContainerId = useLabStore((s) => s.reactingContainerId);
+  const setReactionProgress = useLabStore((s) => s.setReactionProgress);
 
   // Heating tick — runs every 500ms
   useEffect(() => {
@@ -88,6 +103,115 @@ export default function Home() {
     }, 500);
     return () => clearInterval(interval);
   }, [heatingTick]);
+
+  // Reaction progress decay — animate the reaction ring down to 0 over ~1.2s
+  useEffect(() => {
+    if (reactionProgress > 0) {
+      const startTime = Date.now();
+      const duration = 1200;
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const p = Math.max(0, 1 - elapsed / duration);
+        setReactionProgress(p);
+        if (p <= 0) clearInterval(interval);
+      }, 50);
+      return () => clearInterval(interval);
+    }
+  }, [reactionProgress, setReactionProgress]);
+
+  // Unlock audio on first user interaction (any click)
+  useEffect(() => {
+    const unlock = () => {
+      getSoundManager().unlock();
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't trigger when typing in inputs
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      const key = e.key.toLowerCase();
+      const state = useLabStore.getState();
+      const { containers, selectedContainerId, secondaryContainerId } = state;
+      // Select beakers 1/2/3
+      if (key === "1" || key === "2" || key === "3") {
+        const idx = parseInt(key, 10) - 1;
+        if (containers[idx]) {
+          selectContainer(containers[idx].id, e.shiftKey);
+          if (state.soundEnabled) getSoundManager().play("click");
+        }
+        return;
+      }
+      // R = react on selected beaker
+      if (key === "r" && selectedContainerId) {
+        const c = containers.find((c) => c.id === selectedContainerId);
+        if (c && c.contents.length > 0 && !c.isBroken) {
+          triggerReaction(selectedContainerId);
+        }
+        return;
+      }
+      // H = toggle heat on selected beaker
+      if (key === "h" && selectedContainerId) {
+        const c = containers.find((c) => c.id === selectedContainerId);
+        if (c && !c.isBroken) {
+          setContainerHeating(selectedContainerId, !c.isHeating);
+        }
+        return;
+      }
+      // E = empty selected beaker
+      if (key === "e" && selectedContainerId) {
+        emptyContainer(selectedContainerId);
+        toast.info("Beaker emptied", { description: selectedContainerId.toUpperCase() });
+        return;
+      }
+      // P = pour (needs primary + secondary)
+      if (key === "p" && selectedContainerId && secondaryContainerId) {
+        const src = containers.find((c) => c.id === selectedContainerId);
+        if (src && src.contents.length > 0) {
+          startPourAnimation(selectedContainerId, secondaryContainerId);
+          toast.info("Pouring...", { description: `${selectedContainerId} → ${secondaryContainerId}` });
+        }
+        return;
+      }
+      // T = toggle pH strip
+      if (key === "t") {
+        togglePHStrip();
+        return;
+      }
+      // M = toggle mute
+      if (key === "m") {
+        toggleSound();
+        return;
+      }
+      // Escape = deselect
+      if (key === "escape") {
+        selectContainer(null);
+        return;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [
+    selectContainer,
+    triggerReaction,
+    setContainerHeating,
+    emptyContainer,
+    startPourAnimation,
+    togglePHStrip,
+    toggleSound,
+  ]);
 
   // Reaction flash effect + toast
   useEffect(() => {
@@ -329,6 +453,20 @@ export default function Home() {
         </div>
 
         <div className="relative flex items-center gap-1.5">
+          {/* Sound toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleSound()}
+            className={
+              soundEnabled
+                ? "text-emerald-400 hover:bg-slate-800 hover:text-emerald-300"
+                : "text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+            }
+            title="Toggle sound (M)"
+          >
+            {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -414,8 +552,28 @@ export default function Home() {
               <span className="text-[10px] text-slate-400">Click select</span>
               <span className="text-slate-600">·</span>
               <span className="text-[10px] text-amber-400">⇧+Click pour</span>
+              <span className="text-slate-600">·</span>
+              <span className="text-[10px] text-emerald-400">⌨ 1/2/3 R H E P T M</span>
             </div>
           </div>
+
+          {/* Reaction in-progress overlay (top center) */}
+          {reactingContainerId && reactionProgress > 0 && (
+            <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2">
+              <div className="flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-950/80 px-4 py-1.5 backdrop-blur">
+                <Zap className="h-3 w-3 animate-pulse text-amber-400" />
+                <span className="text-[10px] font-medium text-amber-200">
+                  Reaction in {reactingContainerId.toUpperCase()}
+                </span>
+                <div className="ml-1 h-1 w-16 overflow-hidden rounded-full bg-slate-700">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-400 to-yellow-200"
+                    style={{ width: `${reactionProgress * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Active alerts indicator */}
           {(dangerCount > 0 || warningCount > 0) && (
