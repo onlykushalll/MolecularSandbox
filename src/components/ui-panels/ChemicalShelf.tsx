@@ -18,11 +18,13 @@ import {
   Search,
   Droplets,
   Beaker as BeakerIcon,
-  Trash2,
+  Zap,
 } from "lucide-react";
 import { useLabStore } from "@/lib/store/lab-store";
 import { cn } from "@/lib/utils";
 import type { ChemicalCategory } from "@/lib/chemistry/types";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 
 const categoryColors: Record<ChemicalCategory, string> = {
   reagent: "bg-slate-500",
@@ -60,6 +62,7 @@ export function ChemicalShelf() {
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [autoReact, setAutoReact] = useState(true);
 
   const filtered = useMemo(() => {
     return chemicals.filter((c) => {
@@ -74,10 +77,18 @@ export function ChemicalShelf() {
 
   const handleAdd = (chemicalId: string) => {
     if (!selectedContainerId) {
-      alert("Select a beaker first by clicking it in the 3D scene");
+      toast.error("No beaker selected", {
+        description: "Click a beaker in the 3D scene first",
+      });
       return;
     }
-    addChemicalToContainer(selectedContainerId, chemicalId, dragVolume);
+    const chem = chemicals.find((c) => c.id === chemicalId);
+    addChemicalToContainer(selectedContainerId, chemicalId, dragVolume, autoReact);
+    if (chem) {
+      toast.success(`Added ${chem.name}`, {
+        description: `${dragVolume}mL → ${selectedContainerId}${autoReact ? " · auto-react on" : ""}`,
+      });
+    }
   };
 
   return (
@@ -126,6 +137,14 @@ export function ChemicalShelf() {
             className="h-7 w-20 border-slate-700 bg-slate-800 text-xs text-white"
           />
           <span className="text-xs text-slate-400">mL</span>
+          <div className="ml-auto flex items-center gap-1.5">
+            <Zap className={cn("h-3 w-3", autoReact ? "text-amber-400" : "text-slate-600")} />
+            <Switch
+              checked={autoReact}
+              onCheckedChange={setAutoReact}
+              className="scale-75"
+            />
+          </div>
         </div>
       </div>
 

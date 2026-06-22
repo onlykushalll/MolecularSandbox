@@ -5,53 +5,95 @@ import {
   Environment,
   ContactShadows,
   PerspectiveCamera,
-  SoftShadows,
+  Html,
 } from "@react-three/drei";
-import { Suspense } from "react";
+import { Suspense, useRef } from "react";
+import * as THREE from "three";
 import { Beaker } from "./Beaker";
 import { LabBench } from "./LabBench";
 import { PourStream } from "./PourStream";
+import { BunsenBurner } from "./BunsenBurner";
 import { useLabStore } from "@/lib/store/lab-store";
 
-export function LabScene() {
+function SceneContents() {
   const containers = useLabStore((s) => s.containers);
+  const selectedContainerId = useLabStore((s) => s.selectedContainerId);
 
   return (
-    <Canvas
-      shadows
-      dpr={[1, 2]}
-      gl={{ antialias: true, alpha: false }}
-      style={{ background: "linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)" }}
-    >
-      <SoftShadows size={25} samples={10} focus={0.8} />
-      <PerspectiveCamera makeDefault position={[0, 2, 6]} fov={45} />
+    <>
+      <LabBench />
+      {containers.map((c) => (
+        <group key={c.id}>
+          <Beaker container={c} />
+          {/* Bunsen burner under selected/hot beaker */}
+          {(selectedContainerId === c.id || c.isHeating) && (
+            <BunsenBurner
+              position={[c.position[0], c.position[1] - 1.1, c.position[2]]}
+              active={c.isHeating}
+            />
+          )}
+        </group>
+      ))}
+      <PourStream />
+    </>
+  );
+}
 
-      {/* Lighting setup — lab environment */}
-      <ambientLight intensity={0.5} color="#ffffff" />
+function Lighting() {
+  const lightRef = useRef<THREE.DirectionalLight>(null);
+  return (
+    <>
+      <ambientLight intensity={0.55} color="#ffffff" />
       <directionalLight
+        ref={lightRef}
         position={[5, 8, 5]}
-        intensity={1.2}
+        intensity={1.4}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-10}
         shadow-camera-right={10}
         shadow-camera-top={10}
         shadow-camera-bottom={-10}
+        shadow-bias={-0.0001}
       />
-      <directionalLight position={[-5, 5, -3]} intensity={0.4} color="#aaccff" />
-      <pointLight position={[0, 3, 2]} intensity={0.3} color="#ffffff" />
+      <directionalLight position={[-5, 5, -3]} intensity={0.5} color="#aaccff" />
+      <pointLight position={[0, 3, 2]} intensity={0.4} color="#ffffff" />
+      {/* Warm fill light to simulate lab lighting */}
+      <pointLight position={[3, 2, -2]} intensity={0.3} color="#ffd4a0" distance={8} />
+    </>
+  );
+}
 
-      <Suspense fallback={null}>
-        <LabBench />
-        {containers.map((c) => (
-          <Beaker key={c.id} container={c} />
-        ))}
-        <PourStream />
+export function LabScene() {
+  return (
+    <Canvas
+      shadows
+      dpr={[1, 2]}
+      gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
+      camera={{ position: [0, 2.5, 6], fov: 45 }}
+      style={{
+        background:
+          "radial-gradient(ellipse at top, #1e293b 0%, #0f172a 50%, #020617 100%)",
+      }}
+    >
+      <PerspectiveCamera makeDefault position={[0, 2.5, 6]} fov={45} />
+      <Lighting />
+
+      <Suspense
+        fallback={
+          <Html center>
+            <div className="rounded-lg bg-slate-900/80 px-4 py-2 text-white backdrop-blur">
+              Loading lab...
+            </div>
+          </Html>
+        }
+      >
+        <SceneContents />
         <ContactShadows
-          position={[0, -1.145, 0]}
-          opacity={0.4}
-          scale={10}
-          blur={2}
+          position={[0, -1.144, 0]}
+          opacity={0.45}
+          scale={12}
+          blur={2.5}
           far={4}
           color="#000000"
         />
@@ -66,9 +108,12 @@ export function LabScene() {
         maxDistance={12}
         minPolarAngle={0.1}
         maxPolarAngle={Math.PI / 2.1}
-        target={[0, -0.5, 0]}
+        target={[0, -0.3, 0]}
         makeDefault
       />
+
+      {/* Subtle fog for depth */}
+      <fog attach="fog" args={["#0f172a", 12, 25]} />
     </Canvas>
   );
 }

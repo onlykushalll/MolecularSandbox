@@ -88,10 +88,12 @@ interface LabStore {
   addChemicalToContainer: (
     containerId: string,
     chemicalId: string,
-    volume: number
+    volume: number,
+    autoReact?: boolean
   ) => void;
   emptyContainer: (containerId: string) => void;
   setContainerHeating: (containerId: string, isHeating: boolean) => void;
+  heatingTick: () => void;
 
   // Actions — reaction
   processReaction: (containerId: string, result: ReactionResult) => void;
@@ -315,7 +317,7 @@ export const useLabStore = create<LabStore>((set, get) => ({
       pourProgress: 0,
     }),
 
-  addChemicalToContainer: (containerId, chemicalId, volume) => {
+  addChemicalToContainer: (containerId, chemicalId, volume, autoReact = false) => {
     const state = get();
     const chem = state.chemicalsMap.get(chemicalId);
     if (!chem) return;
@@ -327,22 +329,26 @@ export const useLabStore = create<LabStore>((set, get) => ({
       moles = volumeToMoles(volume, chem);
     }
 
+    // Find the container and calculate new contents
+    const container = state.containers.find((c) => c.id === containerId);
+    if (!container) return;
+
+    const existing = container.contents.find((cc) => cc.chemicalId === chemicalId);
+    let newContents: ContainerContent[];
+    if (existing) {
+      newContents = container.contents.map((cc) =>
+        cc.chemicalId === chemicalId
+          ? { ...cc, volume: cc.volume + volume, moles: cc.moles + moles }
+          : cc
+      );
+    } else {
+      newContents = [...container.contents, { chemicalId, volume, moles }];
+    }
+
     set({
-      containers: state.containers.map((c) => {
-        if (c.id !== containerId) return c;
-        const existing = c.contents.find((cc) => cc.chemicalId === chemicalId);
-        let newContents: ContainerContent[];
-        if (existing) {
-          newContents = c.contents.map((cc) =>
-            cc.chemicalId === chemicalId
-              ? { ...cc, volume: cc.volume + volume, moles: cc.moles + moles }
-              : cc
-          );
-        } else {
-          newContents = [...c.contents, { chemicalId, volume, moles }];
-        }
-        return { ...c, contents: newContents };
-      }),
+      containers: state.containers.map((c) =>
+        c.id === containerId ? { ...c, contents: newContents } : c
+      ),
     });
 
     // Check for safety alerts
@@ -355,6 +361,20 @@ export const useLabStore = create<LabStore>((set, get) => ({
           message: `${chem.name} is ${hazards.includes("corrosive") ? "corrosive" : "toxic"}! Wear PPE.`,
           severity: "danger",
         });
+      }
+    }
+
+    // Auto-trigger reaction if enabled and a matching reaction exists
+    if (autoReact) {
+      const presentIds = new Set(newContents.map((c) => c.chemicalId));
+      const matchingReaction = state.reactions.find((r) =>
+        r.reactants.every((rr) => presentIds.has(rr.chemicalId))
+      );
+      if (matchingReaction) {
+        // Slight delay for visual feedback
+        setTimeout(() => {
+          get().triggerReaction(containerId);
+        }, 300);
       }
     }
   },
@@ -374,6 +394,54 @@ export const useLabStore = create<LabStore>((set, get) => ({
         c.id === containerId ? { ...c, isHeating } : c
       ),
     })),
+
+  heatingTick: () => {
+    const state = get();
+    let changed = false;
+    const newContainers = state.containers.map((c) => {
+      if (!c.isHeating || c.contents.length === 0) {
+        // Cool down slowly when not heating
+        if (c.temperature > 25.5) {
+          changed = true;
+          return { ...c, temperature: Math.max(25, c.temperature - 0.3) };
+        }
+        return c;
+      }
+      // Calculate boiling point of mixture (max of contents)
+      const boilingPoints = c.contents.map(
+        (cc) => state.chemicalsMap.get(cc.chemicalId)?.boilingPoint || 100
+      );
+      const maxBP = Math.max(...boilingPoints, 100);
+      // Heat up — rate depends on volume (smaller heats faster)
+      const totalVolume = c.contents.reduce((s, cc) => s + cc.volume, 0);
+      const heatRate = Math.max(0.5, 3 - totalVolume / 100);
+      const newTemp = Math.min(c.temperature + heatRate, maxBP + 5);
+      if (newTemp !== c.temperature) changed = true;
+      // Evaporate a small amount when at boiling
+      let newContents = c.contents;
+      if (newTemp >= maxBP - 1) {
+        newContents = c.contents
+          .map((cc) => {
+            const chem = state.chemicalsMap.get(cc.chemicalId);
+            if (!chem) return cc;
+            // Evaporate liquids at boiling point
+            if (chem.stateAtSTP === "liquid" && chem.boilingPoint <= newTemp + 1) {
+              const evapVolume = Math.min(0.5, cc.volume);
+              const evapMoles = (evapVolume / cc.volume) * cc.moles;
+              return {
+                chemicalId: cc.chemicalId,
+                volume: cc.volume - evapVolume,
+                moles: cc.moles - evapMoles,
+              };
+            }
+            return cc;
+          })
+          .filter((cc) => cc.volume > 0.1);
+      }
+      return { ...c, temperature: newTemp, contents: newContents };
+    });
+    if (changed) set({ containers: newContainers });
+  },
 
   processReaction: (containerId, result) => {
     const state = get();
@@ -421,10 +489,23 @@ export const useLabStore = create<LabStore>((set, get) => ({
         }
 
         const newTemp = c.temperature + result.temperatureChange;
+        // Cap temperature at the boiling point of the mixture
+        // Only consider LIQUID contents for the cap (solids don't boil away)
+        const liquidBoilingPoints = c.contents
+          .concat(newContents)
+          .map((cc) => {
+            const chem = state.chemicalsMap.get(cc.chemicalId);
+            if (!chem) return 100;
+            // Only liquids contribute to boiling point cap
+            if (chem.stateAtSTP === "liquid") return chem.boilingPoint;
+            return 100; // default water-like for non-liquids
+          });
+        const maxBoilingPoint = Math.max(...liquidBoilingPoints, 100);
+        const cappedTemp = Math.min(newTemp, maxBoilingPoint + 5);
         return {
           ...c,
           contents: newContents,
-          temperature: newTemp,
+          temperature: cappedTemp,
         };
       }),
       lastReactionResult: result,
