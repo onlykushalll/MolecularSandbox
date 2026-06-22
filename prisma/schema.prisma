@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +10,104 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Chemical {
+  id                   String   @id @default(cuid())
+  name                 String   @unique
+  formula              String
+  molarMass            Float    // g/mol
+  density              Float    // g/mL
+  specificHeatCapacity Float    @default(4.18) // J/(g·K)
+  surfaceTension       Float    @default(0.072) // N/m
+  vaporPressure        Float    @default(0) // kPa at 25°C
+  boilingPoint         Float    @default(100) // °C
+  meltingPoint         Float    @default(0) // °C
+  hexColor             String   @default("#4488ff")
+  stateAtSTP           String   @default("liquid") // solid, liquid, gas
+  hazards              String   @default("[]") // JSON array of GHS hazard codes
+  solubility           String   @default("{}") // JSON object
+  refractiveIndex      Float    @default(1.33)
+  viscosity            Float    @default(1.0) // mPa·s
+  category             String   @default("reagent")
+  description          String   @default("")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  reactants ReactionReactant[]
+  products  ReactionProduct[]
 }
 
-model Post {
+model Reaction {
+  id           String   @id @default(cuid())
+  name         String
+  equation     String
+  deltaH       Float    @default(0) // kJ/mol (negative = exothermic)
+  reactionType String   @default("synthesis")
+  isReversible Boolean  @default(false)
+  conditions   String   @default("{}")
+  description  String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reactants ReactionReactant[]
+  products  ReactionProduct[]
+}
+
+model ReactionReactant {
+  id          String  @id @default(cuid())
+  reactionId  String
+  chemicalId  String
+  coefficient Int     @default(1)
+  isLimiting  Boolean @default(false)
+
+  reaction Reaction @relation(fields: [reactionId], references: [id], onDelete: Cascade)
+  chemical Chemical @relation(fields: [chemicalId], references: [id])
+
+  @@unique([reactionId, chemicalId])
+}
+
+model ReactionProduct {
+  id          String  @id @default(cuid())
+  reactionId  String
+  chemicalId  String
+  coefficient Int     @default(1)
+
+  reaction Reaction @relation(fields: [reactionId], references: [id], onDelete: Cascade)
+  chemical Chemical @relation(fields: [chemicalId], references: [id])
+
+  @@unique([reactionId, chemicalId])
+}
+
+model LabState {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
+  name      String   @default("default")
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  containers LabContainerState[]
+}
+
+model LabContainerState {
+  id          String   @id @default(cuid())
+  labStateId  String
+  containerId String
+  type        String   @default("beaker")
+  positionX   Float    @default(0)
+  positionY   Float    @default(0)
+  positionZ   Float    @default(0)
+  rotationX   Float    @default(0)
+  rotationY   Float    @default(0)
+  rotationZ   Float    @default(0)
+  capacity    Float    @default(250)
+  contents    String   @default("[]")
+  temperature Float    @default(25)
+  pressure    Float    @default(101.325)
+  isHeating   Boolean  @default(false)
+  isBroken    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  labState LabState @relation(fields: [labStateId], references: [id], onDelete: Cascade)
+
+  @@unique([labStateId, containerId])
 }
