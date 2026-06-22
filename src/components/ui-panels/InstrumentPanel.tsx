@@ -11,19 +11,27 @@ import {
   Zap,
   Trash2,
   Play,
+  Droplets,
+  ArrowRightLeft,
+  Snowflake,
 } from "lucide-react";
 import { useLabStore } from "@/lib/store/lab-store";
+import { calculatePH, phToColor, phLabel } from "@/lib/chemistry/mixture";
+import { toast } from "sonner";
 
 export function InstrumentPanel() {
   const containers = useLabStore((s) => s.containers);
   const selectedContainerId = useLabStore((s) => s.selectedContainerId);
+  const secondaryContainerId = useLabStore((s) => s.secondaryContainerId);
   const chemicalsMap = useLabStore((s) => s.chemicalsMap);
   const triggerReaction = useLabStore((s) => s.triggerReaction);
   const emptyContainer = useLabStore((s) => s.emptyContainer);
   const setContainerHeating = useLabStore((s) => s.setContainerHeating);
+  const startPourAnimation = useLabStore((s) => s.startPourAnimation);
   const lastReactionResult = useLabStore((s) => s.lastReactionResult);
 
   const selected = containers.find((c) => c.id === selectedContainerId);
+  const secondary = containers.find((c) => c.id === secondaryContainerId);
 
   if (!selected) {
     return (
@@ -36,6 +44,14 @@ export function InstrumentPanel() {
         <p className="text-xs text-slate-500">
           Click a beaker in the scene to view instrument readings.
         </p>
+        <div className="mt-3 rounded-lg border border-slate-700/50 bg-slate-800/30 p-3 text-[11px] text-slate-400">
+          <p className="mb-1 font-semibold text-slate-300">Tips</p>
+          <ul className="space-y-1">
+            <li>• <kbd className="rounded bg-slate-700 px-1">Click</kbd> select beaker</li>
+            <li>• <kbd className="rounded bg-slate-700 px-1">Shift+Click</kbd> second beaker to pour</li>
+            <li>• <kbd className="rounded bg-slate-700 px-1">Drag</kbd> rotate · <kbd className="rounded bg-slate-700 px-1">Scroll</kbd> zoom</li>
+          </ul>
+        </div>
       </Card>
     );
   }
@@ -45,15 +61,28 @@ export function InstrumentPanel() {
   const tempColor =
     selected.temperature > 60 ? "#ef4444" : selected.temperature < 10 ? "#3b82f6" : "#22c55e";
 
+  // Calculate pH
+  const pH = calculatePH(selected.contents, chemicalsMap);
+  const pHColor = phToColor(pH);
+  const pHTargetVolume = secondary ? secondary.contents.reduce((s, c) => s + c.volume, 0) : 0;
+  const canPour = !!secondary && totalVolume > 0;
+
   return (
     <Card className="border-slate-700/50 bg-slate-900/95 backdrop-blur">
-      <div className="border-b border-slate-700/50 p-4">
+      <div className="border-b border-slate-700/50 bg-gradient-to-r from-slate-900 to-slate-800/50 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FlaskConical className="h-5 w-5 text-emerald-400" />
-            <h2 className="text-sm font-bold text-white">
-              {selected.id.toUpperCase()}
-            </h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 ring-1 ring-emerald-500/40">
+              <FlaskConical className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">
+                {selected.id.toUpperCase()}
+              </h2>
+              <p className="text-[10px] text-slate-400">
+                {selected.isHeating ? "🔥 Heating" : "⚪ Idle"} · {selected.contents.length} contents
+              </p>
+            </div>
           </div>
           <Badge variant="outline" className="border-slate-600 text-slate-300">
             {selected.capacity} mL max
@@ -63,66 +92,126 @@ export function InstrumentPanel() {
 
       <div className="space-y-3 p-4">
         {/* Temperature gauge */}
-        <div className="rounded-lg bg-slate-800/50 p-3">
+        <div className="rounded-lg border border-slate-700/40 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-3">
           <div className="mb-1 flex items-center gap-2">
             <Thermometer className="h-4 w-4" style={{ color: tempColor }} />
             <span className="text-xs font-medium text-slate-300">Temperature</span>
+            <span className="ml-auto text-[10px] text-slate-500">
+              {selected.temperature > 60 ? "Hot" : selected.temperature < 10 ? "Cold" : "Ambient"}
+            </span>
           </div>
           <div className="flex items-end gap-1">
-            <span className="text-2xl font-bold" style={{ color: tempColor }}>
+            <span className="text-2xl font-bold tabular-nums" style={{ color: tempColor }}>
               {selected.temperature.toFixed(1)}
             </span>
             <span className="mb-1 text-xs text-slate-400">°C</span>
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
             <div
-              className="h-full rounded-full transition-all"
+              className="h-full rounded-full transition-all duration-300"
               style={{
-                width: `${Math.min(100, (selected.temperature / 100) * 100)}%`,
-                backgroundColor: tempColor,
+                width: `${Math.min(100, (selected.temperature / 120) * 100)}%`,
+                background: `linear-gradient(90deg, #3b82f6 0%, #22c55e 50%, #ef4444 100%)`,
               }}
             />
           </div>
         </div>
 
+        {/* pH Indicator */}
+        <div className="rounded-lg border border-slate-700/40 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Droplets className="h-4 w-4" style={{ color: pHColor }} />
+            <span className="text-xs font-medium text-slate-300">pH Level</span>
+            <span className="ml-auto text-[10px] font-medium" style={{ color: pHColor }}>
+              {phLabel(pH)}
+            </span>
+          </div>
+          <div className="flex items-end gap-1">
+            <span className="text-2xl font-bold tabular-nums" style={{ color: pHColor }}>
+              {pH.toFixed(2)}
+            </span>
+            <span className="mb-1 text-xs text-slate-400">/ 14</span>
+          </div>
+          {/* pH color bar */}
+          <div className="mt-2 h-2 w-full overflow-hidden rounded-full"
+               style={{
+                 background: "linear-gradient(90deg, #dc2626 0%, #ea580c 15%, #facc15 30%, #84cc16 45%, #22c55e 50%, #14b8a6 60%, #3b82f6 75%, #6366f1 88%, #8b5cf6 100%)",
+               }}>
+            <div
+              className="relative h-full"
+              style={{ width: `${(pH / 14) * 100}%` }}
+            >
+              <div
+                className="absolute right-0 top-1/2 h-3.5 w-1 -translate-y-1/2 rounded-full bg-white shadow-lg ring-1 ring-slate-900"
+              />
+            </div>
+          </div>
+          <div className="mt-1 flex justify-between text-[8px] text-slate-500">
+            <span>0</span><span>7</span><span>14</span>
+          </div>
+        </div>
+
         {/* Volume gauge */}
-        <div className="rounded-lg bg-slate-800/50 p-3">
+        <div className="rounded-lg border border-slate-700/40 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-3">
           <div className="mb-1 flex items-center gap-2">
             <Gauge className="h-4 w-4 text-cyan-400" />
             <span className="text-xs font-medium text-slate-300">Volume</span>
+            {fillPercent > 85 && (
+              <span className="ml-auto text-[10px] text-amber-400">⚠ Near full</span>
+            )}
           </div>
           <div className="flex items-end gap-1">
-            <span className="text-2xl font-bold text-cyan-400">
+            <span className="text-2xl font-bold tabular-nums text-cyan-400">
               {totalVolume.toFixed(1)}
             </span>
             <span className="mb-1 text-xs text-slate-400">/ {selected.capacity} mL</span>
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
             <div
-              className="h-full rounded-full bg-cyan-400 transition-all"
+              className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all"
               style={{ width: `${fillPercent}%` }}
             />
           </div>
         </div>
 
         {/* Pressure */}
-        <div className="rounded-lg bg-slate-800/50 p-3">
-          <div className="mb-1 flex items-center gap-2">
-            <Gauge className="h-4 w-4 text-purple-400" />
-            <span className="text-xs font-medium text-slate-300">Pressure</span>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-slate-700/40 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-3">
+            <div className="mb-1 flex items-center gap-1.5">
+              <Gauge className="h-3.5 w-3.5 text-purple-400" />
+              <span className="text-[10px] font-medium text-slate-300">Pressure</span>
+            </div>
+            <div className="flex items-end gap-1">
+              <span className="text-lg font-bold tabular-nums text-purple-400">
+                {selected.pressure.toFixed(1)}
+              </span>
+              <span className="mb-0.5 text-[10px] text-slate-400">kPa</span>
+            </div>
           </div>
-          <div className="flex items-end gap-1">
-            <span className="text-2xl font-bold text-purple-400">
-              {selected.pressure.toFixed(1)}
-            </span>
-            <span className="mb-1 text-xs text-slate-400">kPa</span>
+          <div className="rounded-lg border border-slate-700/40 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-3">
+            <div className="mb-1 flex items-center gap-1.5">
+              <Snowflake className="h-3.5 w-3.5 text-blue-300" />
+              <span className="text-[10px] font-medium text-slate-300">State</span>
+            </div>
+            <div className="text-sm font-bold text-blue-300">
+              {selected.temperature < 0 ? "Frozen" :
+               selected.temperature > 100 ? "Boiling" :
+               selected.isHeating ? "Heating" : "Liquid"}
+            </div>
           </div>
         </div>
 
         {/* Contents list */}
-        <div className="rounded-lg bg-slate-800/50 p-3">
-          <div className="mb-2 text-xs font-medium text-slate-300">
-            Contents ({selected.contents.length})
+        <div className="rounded-lg border border-slate-700/40 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-300">
+              Contents ({selected.contents.length})
+            </span>
+            {selected.precipitate && selected.precipitate.length > 0 && (
+              <span className="text-[10px] text-purple-300">
+                + precipitate: {selected.precipitate.reduce((s, p) => s + p.moles, 0).toFixed(2)} mol
+              </span>
+            )}
           </div>
           {selected.contents.length === 0 ? (
             <p className="text-xs text-slate-500">Empty beaker</p>
@@ -133,10 +222,10 @@ export function InstrumentPanel() {
                 return (
                   <div
                     key={c.chemicalId}
-                    className="flex items-center gap-2 text-xs"
+                    className="flex items-center gap-2 rounded-md bg-slate-900/40 px-2 py-1 text-xs"
                   >
                     <div
-                      className="h-2.5 w-2.5 rounded-full border border-white/20"
+                      className="h-2.5 w-2.5 rounded-full border border-white/20 shadow-sm"
                       style={{ backgroundColor: chem?.hexColor || "#888" }}
                     />
                     <span className="flex-1 truncate text-slate-200">
@@ -151,28 +240,101 @@ export function InstrumentPanel() {
                   </div>
                 );
               })}
+              {selected.precipitate && selected.precipitate.map((p) => {
+                const pchem = chemicalsMap.get(p.chemicalId);
+                return (
+                  <div key={p.chemicalId} className="flex items-center gap-2 rounded-md bg-purple-900/20 px-2 py-1 text-xs ring-1 ring-purple-500/20">
+                    <div
+                      className="h-2.5 w-2.5 rounded-sm border border-white/20"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    <span className="flex-1 truncate text-purple-200">
+                      {pchem?.name || "Precipitate"} (solid)
+                    </span>
+                    <span className="font-mono text-purple-300">
+                      {p.moles.toFixed(3)}mol
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
         {/* Last reaction result */}
         {lastReactionResult && (
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/30 p-3">
+          <div className="rounded-lg border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 to-slate-900/40 p-3 ring-1 ring-emerald-500/10">
             <div className="mb-1 flex items-center gap-2">
               <Zap className="h-4 w-4 text-emerald-400" />
               <span className="text-xs font-medium text-emerald-300">
                 Last Reaction
               </span>
+              {lastReactionResult.gasEvolved && (
+                <span className="ml-auto rounded bg-teal-500/20 px-1.5 py-0.5 text-[9px] text-teal-300">
+                  💨 Gas
+                </span>
+              )}
+              {lastReactionResult.precipitateFormed && (
+                <span className="ml-auto rounded bg-purple-500/20 px-1.5 py-0.5 text-[9px] text-purple-300">
+                  ▼ Precipitate
+                </span>
+              )}
             </div>
-            <div className="text-xs text-slate-300">
+            <div className="text-xs font-mono text-slate-200">
               {lastReactionResult.reaction.equation}
             </div>
-            <div className="mt-1 grid grid-cols-2 gap-2 text-[10px] text-slate-400">
-              <div>ΔH: {lastReactionResult.reaction.deltaH} kJ/mol</div>
-              <div>ΔT: +{lastReactionResult.temperatureChange.toFixed(2)}°C</div>
-              <div>Heat: {lastReactionResult.heatReleased.toFixed(2)} kJ</div>
-              <div>Moles: {lastReactionResult.molesReacted.toFixed(4)}</div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+              <div className="rounded bg-slate-800/50 px-1.5 py-1">
+                <span className="text-slate-500">ΔH: </span>
+                <span className={lastReactionResult.reaction.deltaH < 0 ? "text-red-400" : "text-blue-400"}>
+                  {lastReactionResult.reaction.deltaH} kJ/mol
+                </span>
+              </div>
+              <div className="rounded bg-slate-800/50 px-1.5 py-1">
+                <span className="text-slate-500">ΔT: </span>
+                <span className={lastReactionResult.temperatureChange > 0 ? "text-red-400" : "text-blue-400"}>
+                  {lastReactionResult.temperatureChange > 0 ? "+" : ""}{lastReactionResult.temperatureChange.toFixed(2)}°C
+                </span>
+              </div>
+              <div className="rounded bg-slate-800/50 px-1.5 py-1">
+                <span className="text-slate-500">Heat: </span>
+                <span className="text-amber-400">{lastReactionResult.heatReleased.toFixed(2)} kJ</span>
+              </div>
+              <div className="rounded bg-slate-800/50 px-1.5 py-1">
+                <span className="text-slate-500">Moles: </span>
+                <span className="text-cyan-400">{lastReactionResult.molesReacted.toFixed(4)}</span>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Pour bar (when secondary selected) */}
+        {secondary && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-950/20 p-3 ring-1 ring-amber-500/10">
+            <div className="mb-2 flex items-center gap-2">
+              <ArrowRightLeft className="h-4 w-4 text-amber-400" />
+              <span className="text-xs font-medium text-amber-300">Pour Mode</span>
+            </div>
+            <div className="mb-2 flex items-center justify-between text-[11px] text-slate-300">
+              <span className="font-mono text-emerald-400">{selected.id.toUpperCase()}</span>
+              <ArrowRightLeft className="h-3 w-3 text-amber-400" />
+              <span className="font-mono text-amber-400">{secondary.id.toUpperCase()}</span>
+              <span className="text-slate-500">({pHTargetVolume.toFixed(0)}mL)</span>
+            </div>
+            <Button
+              onClick={() => {
+                startPourAnimation(selected.id, secondary.id);
+                toast.info("Pouring...", {
+                  description: `${selected.id} → ${secondary.id}`,
+                });
+              }}
+              disabled={!canPour}
+              size="sm"
+              className="w-full bg-amber-600 hover:bg-amber-500"
+            >
+              <ArrowRightLeft className="mr-1 h-3 w-3" />
+              Pour from {selected.id.toUpperCase()} to {secondary.id.toUpperCase()}
+            </Button>
           </div>
         )}
 

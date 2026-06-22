@@ -27,6 +27,7 @@ interface LabStore {
 
   // Selection
   selectedContainerId: string | null;
+  secondaryContainerId: string | null;
   selectedChemicalId: string | null;
   hoveredContainerId: string | null;
 
@@ -71,7 +72,7 @@ interface LabStore {
   addContainer: (container: ContainerState) => void;
   removeContainer: (id: string) => void;
   updateContainer: (id: string, updates: Partial<ContainerState>) => void;
-  selectContainer: (id: string | null) => void;
+  selectContainer: (id: string | null, additive?: boolean) => void;
   setHoveredContainer: (id: string | null) => void;
 
   // Actions — chemicals
@@ -83,6 +84,7 @@ interface LabStore {
   updatePourProgress: (progress: number) => void;
   completePour: () => void;
   cancelPour: () => void;
+  startPourAnimation: (sourceId: string, targetId: string) => void;
 
   // Actions — chemical manipulation
   addChemicalToContainer: (
@@ -140,6 +142,8 @@ const defaultContainers: ContainerState[] = [
     pressure: 101.325,
     isHeating: false,
     isBroken: false,
+    precipitate: null,
+    gasEmitting: null,
   },
   {
     id: "beaker-2",
@@ -152,6 +156,8 @@ const defaultContainers: ContainerState[] = [
     pressure: 101.325,
     isHeating: false,
     isBroken: false,
+    precipitate: null,
+    gasEmitting: null,
   },
   {
     id: "beaker-3",
@@ -164,6 +170,8 @@ const defaultContainers: ContainerState[] = [
     pressure: 101.325,
     isHeating: false,
     isBroken: false,
+    precipitate: null,
+    gasEmitting: null,
   },
 ];
 
@@ -174,6 +182,7 @@ export const useLabStore = create<LabStore>((set, get) => ({
   chemicalsMap: new Map(),
 
   selectedContainerId: null,
+  secondaryContainerId: null,
   selectedChemicalId: null,
   hoveredContainerId: null,
 
@@ -233,7 +242,18 @@ export const useLabStore = create<LabStore>((set, get) => ({
       ),
     })),
 
-  selectContainer: (id) => set({ selectedContainerId: id }),
+  selectContainer: (id, additive = false) =>
+    set((state) => {
+      if (additive && id && state.selectedContainerId && state.selectedContainerId !== id) {
+        // Shift-click: set secondary (for pour target)
+        return { secondaryContainerId: id };
+      }
+      if (additive && id && state.selectedContainerId === id) {
+        // Shift-click same beaker: deselect secondary
+        return { secondaryContainerId: null };
+      }
+      return { selectedContainerId: id, secondaryContainerId: null };
+    }),
   setHoveredContainer: (id) => set({ hoveredContainerId: id }),
 
   selectChemical: (id) => set({ selectedChemicalId: id }),
@@ -317,6 +337,28 @@ export const useLabStore = create<LabStore>((set, get) => ({
       pourProgress: 0,
     }),
 
+  startPourAnimation: (sourceId, targetId) => {
+    const state = get();
+    const source = state.containers.find((c) => c.id === sourceId);
+    if (!source) return;
+    const totalSourceVolume = source.contents.reduce((s, c) => s + c.volume, 0);
+    if (totalSourceVolume <= 0) return;
+    // Torricelli's theorem: v = √(2gh) → flow rate proportional to √height
+    // Use a 2-second animation for visual clarity
+    get().startPour(sourceId, targetId);
+    const startTime = Date.now();
+    const duration = 2000;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      get().updatePourProgress(progress);
+      if (progress >= 1) {
+        clearInterval(interval);
+        get().completePour();
+      }
+    }, 50);
+  },
+
   addChemicalToContainer: (containerId, chemicalId, volume, autoReact = false) => {
     const state = get();
     const chem = state.chemicalsMap.get(chemicalId);
@@ -383,7 +425,7 @@ export const useLabStore = create<LabStore>((set, get) => ({
     set((state) => ({
       containers: state.containers.map((c) =>
         c.id === containerId
-          ? { ...c, contents: [], temperature: 25, isHeating: false }
+          ? { ...c, contents: [], temperature: 25, isHeating: false, precipitate: null, gasEmitting: null, lastReactionAt: undefined }
           : c
       ),
     })),
@@ -399,19 +441,35 @@ export const useLabStore = create<LabStore>((set, get) => ({
     const state = get();
     let changed = false;
     const newContainers = state.containers.map((c) => {
+      // Decay gas emission intensity over time
+      let gasEmitting = c.gasEmitting;
+      if (gasEmitting) {
+        const newIntensity = gasEmitting.intensity - 0.05;
+        if (newIntensity <= 0) {
+          gasEmitting = null;
+          changed = true;
+        } else if (newIntensity !== gasEmitting.intensity) {
+          gasEmitting = { ...gasEmitting, intensity: newIntensity };
+          changed = true;
+        }
+      }
+
       if (!c.isHeating || c.contents.length === 0) {
         // Cool down slowly when not heating
         if (c.temperature > 25.5) {
           changed = true;
-          return { ...c, temperature: Math.max(25, c.temperature - 0.3) };
+          return { ...c, temperature: Math.max(25, c.temperature - 0.3), gasEmitting };
         }
-        return c;
+        return gasEmitting !== c.gasEmitting ? { ...c, gasEmitting } : c;
       }
-      // Calculate boiling point of mixture (max of contents)
-      const boilingPoints = c.contents.map(
-        (cc) => state.chemicalsMap.get(cc.chemicalId)?.boilingPoint || 100
-      );
-      const maxBP = Math.max(...boilingPoints, 100);
+      // Calculate boiling point cap — only LIQUID contents contribute (solids don't boil)
+      const liquidBoilingPoints = c.contents.map((cc) => {
+        const chem = state.chemicalsMap.get(cc.chemicalId);
+        if (!chem) return 100;
+        if (chem.stateAtSTP === "liquid") return chem.boilingPoint;
+        return 100; // non-liquids default to water-like
+      });
+      const maxBP = Math.max(...liquidBoilingPoints, 100);
       // Heat up — rate depends on volume (smaller heats faster)
       const totalVolume = c.contents.reduce((s, cc) => s + cc.volume, 0);
       const heatRate = Math.max(0.5, 3 - totalVolume / 100);
@@ -438,7 +496,7 @@ export const useLabStore = create<LabStore>((set, get) => ({
           })
           .filter((cc) => cc.volume > 0.1);
       }
-      return { ...c, temperature: newTemp, contents: newContents };
+      return { ...c, temperature: newTemp, contents: newContents, gasEmitting };
     });
     if (changed) set({ containers: newContainers });
   },
@@ -472,6 +530,11 @@ export const useLabStore = create<LabStore>((set, get) => ({
           if (chem.stateAtSTP === "gas") {
             continue;
           }
+          // Solids that form from liquid/aqueous reactions become precipitate — settle at bottom
+          if (chem.stateAtSTP === "solid" && result.precipitateFormed) {
+            // Tracked separately as precipitate, not in liquid contents
+            continue;
+          }
           const volume = product.volume || molesToVolume(product.moles, chem);
           const existing = newContents.find(
             (cc) => cc.chemicalId === product.chemicalId
@@ -502,10 +565,43 @@ export const useLabStore = create<LabStore>((set, get) => ({
           });
         const maxBoilingPoint = Math.max(...liquidBoilingPoints, 100);
         const cappedTemp = Math.min(newTemp, maxBoilingPoint + 5);
+
+        // Track VFX state: ALL solid products from precipitation reactions become precipitate
+        let precipitate = c.precipitate ? [...c.precipitate] : null;
+        if (result.precipitateFormed) {
+          if (!precipitate) precipitate = [];
+          for (const product of result.productsProduced) {
+            const chem = state.chemicalsMap.get(product.chemicalId);
+            if (!chem || chem.stateAtSTP !== "solid") continue;
+            const existing = precipitate.find((p) => p.chemicalId === product.chemicalId);
+            if (existing) {
+              existing.moles += product.moles;
+            } else {
+              precipitate.push({
+                chemicalId: product.chemicalId,
+                moles: product.moles,
+                color: chem.hexColor,
+              });
+            }
+          }
+        }
+        let gasEmitting = c.gasEmitting || null;
+        if (result.gasEvolved && result.gasChemicalId) {
+          const gchem = state.chemicalsMap.get(result.gasChemicalId);
+          gasEmitting = {
+            chemicalId: result.gasChemicalId,
+            intensity: 1.0,
+            color: gchem?.hexColor || "#dddddd",
+          };
+        }
+
         return {
           ...c,
           contents: newContents,
           temperature: cappedTemp,
+          precipitate,
+          gasEmitting,
+          lastReactionAt: Date.now(),
         };
       }),
       lastReactionResult: result,
@@ -690,6 +786,7 @@ export const useLabStore = create<LabStore>((set, get) => ({
     set({
       containers: defaultContainers,
       selectedContainerId: null,
+      secondaryContainerId: null,
       selectedChemicalId: null,
       safetyAlerts: [],
       journalEntries: [],

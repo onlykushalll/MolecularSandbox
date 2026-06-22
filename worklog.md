@@ -235,3 +235,191 @@ bun run db:push      # Push schema changes to SQLite
 - **State management**: `src/lib/store/lab-store.ts`
 - **AI Assistant API**: `src/app/api/assistant/route.ts`
 - **Seed data**: `prisma/seed.ts`
+
+---
+
+## Round 3 Updates (2025-06-22) — Cron Review #2: "Immersive Chemistry Experience"
+
+### QA Findings (Pre-Round 3)
+- ✅ Page loads HTTP 200, ~1-2s compile time
+- ✅ 3D scene renders with beakers, bench, lighting
+- ✅ Beaker selection via canvas click works
+- ✅ Chemical addition (42 chemicals) + auto-react works
+- ✅ Stoichiometry: limiting reagent, ΔT, ΔH all correct
+- ✅ Heating mechanic, Empty beaker, Reset all work
+- ✅ Safety panel (PPE + alerts + GHS), Journal, Presets all functional
+- ✅ Lint passes clean, no console errors
+- ⚠️ **BUG**: `heatingTick` cap considered ALL contents' boiling points (including solids like NaCl BP=1465°C), allowing unrealistic temperatures — **FIXED**
+- ⚠️ No precipitate visualization in 3D — **FIXED**
+- ⚠️ No gas emission effects in 3D — **FIXED**
+- ⚠️ No pH indicator — **FIXED**
+- ⚠️ Pour between beakers not wired — **FIXED**
+- ⚠️ No lab state persistence UI — **FIXED**
+
+### Bug Fixes
+1. **heatingTick cap** — Now only considers LIQUID boiling points (matching `processReaction` logic). Solids with high BP (NaCl 1465°C) no longer allow unrealistic temperatures. Non-liquids default to 100 (water-like).
+2. **Precipitate tracking** — Changed `ContainerState.precipitate` from single object to array. ALL solid products from precipitation reactions now settle at bottom (previously only one was tracked). Colors blend weighted by moles.
+
+### New Features (7 major additions)
+
+#### 1. 3D Precipitate Visualization (`Beaker.tsx`)
+- When a precipitate forms (solid product from liquid reactants), animated dodecahedron particles fall from the liquid surface and settle at the bottom
+- Particle count scales with moles (up to 80 particles)
+- Color blends all precipitate chemicals weighted by moles
+- Particles rotate while falling, then settle
+- Settled height grows with total moles
+- Purple "▼ X mol precipitate" badge appears below beaker
+- Tested with CuSO4 + 2NaOH → Cu(OH)2↓ + Na2SO4: 2.26 mol precipitate formed
+
+#### 2. 3D Gas Emission Effects (`Beaker.tsx`)
+- `GasEmission` component: particles rise above the liquid surface and drift outward, fading as they ascend
+- Particle count scales with `gasEmitting.intensity` (decays from 1.0 to 0 over ~10 seconds via `heatingTick`)
+- Color matches the gas chemical's hexColor
+- `SteamCloud` component: when temperature > 70°C, white steam particles billow upward (separate from gas emission)
+- Bubbles inside liquid when heating or gas evolving
+- Tested with Mg + 2HCl → MgCl2 + H2↑: gas particles visible
+
+#### 3. pH Indicator System (`mixture.ts` + `InstrumentPanel.tsx`)
+- `calculatePH()`: estimates pH from acid/base contents
+  - Strong acids (HCl, HNO3, H2SO4, HBr, HI, HClO4): full dissociation, H2SO4 gives 2 H+
+  - Strong bases (NaOH, KOH, LiOH, Ca(OH)2, Ba(OH)2): full dissociation
+  - Weak acids (acetic, carbonic, sulfurous, phosphoric, HF, HNO2, HCN): [H+] = √(Ka·C)
+  - Weak bases (NH3, NH4OH): [OH-] = √(Kb·C)
+  - Net H+ → pH = -log[H+], Net OH- → pH = 14 - pOH
+- `phToColor()`: universal indicator gradient (red pH 0 → green pH 7 → violet pH 14)
+- `phLabel()`: qualitative label (Strongly Acidic / Acidic / Neutral / Basic / Strongly Basic)
+- InstrumentPanel shows: large pH number with color, color gradient bar with pointer, qualitative label
+- Tested: HCl → pH 0.00 (Strongly Acidic), NaOH excess → pH 14.00 (Strongly Basic), neutral salt → pH 7.00
+
+#### 4. Pour Between Beakers (`lab-store.ts` + `Beaker.tsx` + `InstrumentPanel.tsx` + `PourStream.tsx`)
+- **Shift-click** a second beaker to set it as pour target (secondary selection, amber ring)
+- `selectContainer(id, additive)` — additive mode sets `secondaryContainerId`
+- Pour Mode panel appears in InstrumentPanel with "Pour from X to Y" button
+- `startPourAnimation()`: 2-second animation using setInterval (50ms ticks), updates `pourProgress` 0→1
+- `PourStream` enhanced: stream color matches source liquid color (mixed), curved tube geometry, animated leading droplet, progress % label
+- `completePour()`: transfers 30mL (proportional moles) from source to target
+- Selection rings: green (primary), amber (secondary), cyan (hover)
+- Tested: poured 30mL HCl from BEAKER-1 to BEAKER-2 successfully
+
+#### 5. Lab State Persistence (`api/lab-saves/` + `SaveLoadPanel.tsx`)
+- New API: `/api/lab-saves` (GET list, POST save) + `/api/lab-saves/[id]` (GET load, DELETE)
+- Named save slots — multiple saves with custom names
+- `SaveLoadPanel` component with:
+  - Save name input + save button
+  - List of saves with name, timestamp, beaker count, content count
+  - Load button per save
+  - Delete button (hover)
+  - Export JSON (download file)
+  - Import JSON (upload file)
+- Persists: container positions, contents, temperature, pressure, capacity, type
+- Added "Save" as 5th tab in right panel
+- Tested: saved "Round 3 Test", reset lab, loaded save → contents restored
+
+#### 6. Enhanced LabBench Scene (`LabBench.tsx`)
+- Dark resin lab countertop with glossy clearcoat finish (was: brown wood)
+- Cabinet front panel with drawer lines and metallic handles
+- Back wall with white tile pattern (grid lines)
+- Glowing blue window with frame and cross bars (top center)
+- 10 colorful reagent bottles on left/right shelves (glass + liquid)
+- 7 colored books on top shelf
+- Microscope silhouette on top shelf center (base, arm, eyepiece, lens)
+- Floor plane for shadow context
+- Lab stool (seat, pole, base) on left side
+- Green grid markings on bench surface
+
+#### 7. Enhanced Styling Throughout (`page.tsx` + `globals.css` + panels)
+- **Header**: animated radial gradient background, subtle grid pattern, pulsing logo badge, beaker selection status badges (green primary, amber secondary with → arrow), total volume stat
+- **Mini stats card** (top-left of 3D scene): beaker count, contents count, total mL — always visible
+- **Tab buttons**: gradient (emerald→cyan) when active, with shadow glow
+- **InstrumentPanel**: 
+  - Gradient header with icon badge
+  - Temperature gauge with gradient bar (blue→green→red)
+  - pH indicator with full color spectrum bar + pointer
+  - Volume gauge with gradient + "near full" warning
+  - Pressure + State cards (2-column grid)
+  - Contents list with colored dots, monospace moles
+  - Precipitate items shown separately with purple styling
+  - Last reaction card with gas/precipitate badges, 2x2 grid of stats
+  - Pour Mode panel (amber theme) when secondary selected
+- **Controls hint**: now includes "⇧+Click pour" hint
+- **Alerts**: separate Danger (pulsing red) and Warning (amber) badges
+- **globals.css**: added `gradient-border`, `glass-strong`, `hover-lift`, `inner-glow-emerald`, `animated-gradient`, `reaction-flash` utilities + `slide-in-right`, `pulse-ring`, `gradient-shift` keyframes
+
+### Architecture Updates
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── lab-saves/route.ts          # NEW — list + save named slots
+│   │   ├── lab-saves/[id]/route.ts     # NEW — load + delete
+│   │   ├── chemicals/route.ts
+│   │   ├── reactions/route.ts
+│   │   ├── lab-state/route.ts
+│   │   └── assistant/route.ts
+│   ├── globals.css                     # +utilities, +keyframes
+│   └── page.tsx                        # +Save tab, +mini stats, +pour status, +animated header
+├── components/
+│   ├── lab/
+│   │   ├── Beaker.tsx                  # +Precipitate, +GasEmission, +SteamCloud, +shift-click, +hover tooltip, +selection ring
+│   │   ├── LabBench.tsx                # REWRITTEN — dark resin, cabinet, tiles, window, bottles, books, microscope, stool
+│   │   ├── PourStream.tsx              # +source color mixing, +leading droplet, +better curve
+│   │   └── BunsenBurner.tsx
+│   └── ui-panels/
+│       ├── ChemicalShelf.tsx
+│       ├── InstrumentPanel.tsx         # +pH indicator, +pour mode, +state card, +precipitate list
+│       ├── SafetyPanel.tsx
+│       ├── LabJournal.tsx
+│       ├── PresetExperiments.tsx
+│       ├── AIAssistant.tsx
+│       └── SaveLoadPanel.tsx           # NEW — save/load/import/export
+└── lib/
+    ├── chemistry/
+    │   ├── types.ts                    # +precipitate array, +gasEmitting, +lastReactionAt
+    │   ├── engine.ts
+    │   ├── mixture.ts                  # +calculatePH, +phToColor, +phLabel
+    │   └── presets.ts
+    └── store/
+        └── lab-store.ts                # +secondaryContainerId, +startPourAnimation, +VFX tracking, +heatingTick fix
+```
+
+### Verification Results (agent-browser QA)
+- ✅ Lint passes clean (`bun run lint`)
+- ✅ Page loads HTTP 200
+- ✅ 3D scene renders with enhanced bench (bottles, microscope, window, stool)
+- ✅ Beaker selection (click) + secondary selection (shift-click) work
+- ✅ Precipitate forms: CuSO4 + NaOH → 2.26 mol precipitate (Cu(OH)2 + Na2SO4)
+- ✅ Gas emission: Mg + HCl → H2↑ (gas badge + particles)
+- ✅ pH calculation: HCl → pH 0.00, NaOH excess → pH 14.00, neutral → pH 7.00
+- ✅ Pour: shift-click BEAKER-2, pour button, 30mL transferred
+- ✅ Save: "Round 3 Test" saved with 3 beakers, 1 content
+- ✅ Load: save restored, BEAKER-1 shows Magnesium content
+- ✅ Heating tick: temperature cools when not heating
+- ✅ All 5 right-panel tabs functional (Lab/Safety/AI/Save/Journal)
+- ✅ Both left-panel tabs functional (Shelf/Presets)
+- ✅ No console errors
+- ✅ All API routes return 200
+
+### Known Limitations
+1. **Precipitate/gas VFX not persisted** — The Prisma `LabContainerState` schema doesn't have columns for `precipitate` or `gasEmitting`. These VFX states are transient and reset on save/load. Liquid contents ARE persisted. (Could add columns in a future round.)
+2. **Pour transfers fixed 30mL** — The `completePour` transfers a fixed 30mL regardless of animation duration. Torricelli's theorem is referenced in comments but not fully implemented for variable flow rate.
+3. **Solubility not modeled** — All solid products from liquid reactants are treated as precipitates. In reality, Na2SO4 is soluble and would dissolve. A solubility rules engine could be added.
+4. **AI Assistant network** — May timeout in sandbox (ConnectTimeoutError). Error handling shows fallback.
+
+### Next Steps (Priority Order)
+
+#### P1 — Remaining Polish
+- [ ] Add precipitate/gasEmitting columns to Prisma schema for full persistence
+- [ ] Implement variable pour rate (Torricelli's theorem: v = √(2gh))
+- [ ] Solubility rules engine (dissolve soluble salts, precipitate insoluble ones)
+- [ ] Glass breaking effect on thermal shock (rapid temp change)
+- [ ] Color change animation during reactions (lerp liquid color over 1s)
+
+#### P2 — Advanced Features
+- [ ] 3D pH strip that physically dips into beaker
+- [ ] Bunsen burner flame size control (slider)
+- [ ] Reaction progress bar overlay during reaction
+- [ ] Sound effects (bubbling, pouring, breaking glass)
+- [ ] Mobile support: tilt-to-pour, haptics
+- [ ] Multi-step synthesis chains (reaction sequences)
+- [ ] Titration mode with burette
+

@@ -196,3 +196,115 @@ export function volumeToMoles(
   const mass = volume * chemical.density; // grams
   return mass / chemical.molarMass;
 }
+
+/**
+ * Estimate pH of a mixture based on acid/base contents.
+ * Strong acids (HCl, HNO3, H2SO4): fully dissociate.
+ * Weak acids (acetic, carbonic): partial dissociation with Ka.
+ * Strong bases (NaOH, KOH): fully dissociate.
+ * Weak bases (ammonia): partial.
+ * Neutral salts / water: pH 7.
+ */
+export function calculatePH(
+  contents: ContainerContent[],
+  chemicals: Map<string, ChemicalData>
+): number {
+  if (contents.length === 0) return 7.0;
+
+  let hPlus = 0; // moles of H+ from strong acids
+  let ohMinus = 0; // moles of OH- from strong bases
+  let weakAcidH = 0; // approximate H+ from weak acids
+  let weakBaseOH = 0; // approximate OH- from weak bases
+  let totalVolumeL = 0;
+
+  const strongAcids = ["hcl", "hno3", "h2so4", "hbr", "hi", "hclo4"];
+  const strongBases = ["naoh", "koh", "lioh", "caoh2", "baoh2", "sroh2"];
+  const weakAcids = ["ch3cooh", "h2co3", "h2so3", "h3po4", "hf", "hno2", "hcn"];
+  const weakBases = ["nh3", "nh4oh"];
+
+  for (const content of contents) {
+    const chem = chemicals.get(content.chemicalId);
+    if (!chem) continue;
+    const formula = chem.formula.toLowerCase();
+    const volL = content.volume / 1000;
+    totalVolumeL += volL;
+
+    if (strongAcids.includes(formula)) {
+      // H2SO4 gives 2 H+
+      const protons = formula === "h2so4" ? 2 : 1;
+      hPlus += content.moles * protons;
+    } else if (strongBases.includes(formula)) {
+      const hydroxides = formula.includes("oh2") ? 2 : 1; // Ca(OH)2, Ba(OH)2
+      ohMinus += content.moles * hydroxides;
+    } else if (weakAcids.includes(formula)) {
+      // Approximate Ka ~ 10^-4 to 10^-5 → [H+] ≈ sqrt(Ka * C)
+      const Ka = formula === "ch3cooh" ? 1.8e-5 : 4.3e-7;
+      const C = content.moles / Math.max(volL, 0.001);
+      const hConc = Math.sqrt(Ka * C);
+      weakAcidH += hConc * volL;
+    } else if (weakBases.includes(formula)) {
+      const Kb = 1.8e-5;
+      const C = content.moles / Math.max(volL, 0.001);
+      const ohConc = Math.sqrt(Kb * C);
+      weakBaseOH += ohConc * volL;
+    }
+  }
+
+  if (totalVolumeL <= 0) return 7.0;
+
+  const netH = hPlus + weakAcidH - ohMinus - weakBaseOH;
+  if (Math.abs(netH) < 1e-9) return 7.0;
+
+  if (netH > 0) {
+    const hConc = netH / totalVolumeL;
+    return Math.max(0, -Math.log10(hConc));
+  } else {
+    const ohConc = -netH / totalVolumeL;
+    const pOH = Math.max(0, -Math.log10(ohConc));
+    return Math.min(14, 14 - pOH);
+  }
+}
+
+/**
+ * Map a pH value to a universal indicator color.
+ * Red (pH 0) → Orange → Yellow → Green (pH 7) → Blue → Indigo → Violet (pH 14)
+ */
+export function phToColor(pH: number): string {
+  // Clamp pH 0..14
+  const p = Math.max(0, Math.min(14, pH));
+  // Color stops
+  const stops = [
+    { p: 0, c: [220, 38, 38] },     // red
+    { p: 2, c: [234, 88, 12] },     // orange
+    { p: 4, c: [250, 204, 21] },    // yellow
+    { p: 6, c: [132, 204, 22] },    // yellow-green
+    { p: 7, c: [34, 197, 94] },     // green
+    { p: 8, c: [20, 184, 166] },    // teal
+    { p: 10, c: [59, 130, 246] },   // blue
+    { p: 12, c: [99, 102, 241] },   // indigo
+    { p: 14, c: [139, 92, 246] },   // violet
+  ];
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (p >= stops[i].p && p <= stops[i + 1].p) {
+      const t = (p - stops[i].p) / (stops[i + 1].p - stops[i].p);
+      const r = Math.round(stops[i].c[0] + (stops[i + 1].c[0] - stops[i].c[0]) * t);
+      const g = Math.round(stops[i].c[1] + (stops[i + 1].c[1] - stops[i].c[1]) * t);
+      const b = Math.round(stops[i].c[2] + (stops[i + 1].c[2] - stops[i].c[2]) * t);
+      return rgbToHex(r, g, b);
+    }
+  }
+  return "#22c55e";
+}
+
+/**
+ * Get a qualitative pH label.
+ */
+export function phLabel(pH: number): string {
+  if (pH < 2) return "Strongly Acidic";
+  if (pH < 5) return "Acidic";
+  if (pH < 6.5) return "Weakly Acidic";
+  if (pH < 7.5) return "Neutral";
+  if (pH < 9) return "Weakly Basic";
+  if (pH < 12) return "Basic";
+  return "Strongly Basic";
+}

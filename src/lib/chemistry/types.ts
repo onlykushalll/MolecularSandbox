@@ -71,6 +71,18 @@ export interface ContainerState {
   pressure: number; // kPa
   isHeating: boolean;
   isBroken: boolean;
+  // VFX state tracking (transient — derived from reactions)
+  precipitate?: {
+    chemicalId: string;
+    moles: number;
+    color: string;
+  }[] | null;
+  gasEmitting?: {
+    chemicalId: string;
+    intensity: number; // 0..1 decay
+    color: string;
+  } | null;
+  lastReactionAt?: number;
 }
 
 export type ReactionType =
