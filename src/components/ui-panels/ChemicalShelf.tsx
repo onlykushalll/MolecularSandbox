@@ -95,13 +95,21 @@ export function ChemicalShelf() {
   };
 
   return (
-    <Card className="flex h-full flex-col border-slate-700/50 bg-slate-900/95 backdrop-blur">
-      <div className="border-b border-slate-700/50 p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <FlaskConical className="h-5 w-5 text-emerald-400" />
-          <h2 className="text-lg font-bold text-white">Chemical Shelf</h2>
-          <Badge variant="secondary" className="ml-auto bg-slate-700 text-slate-200">
-            {filtered.length}
+    <Card className="flex h-full flex-col border-slate-700/50 bg-slate-900/95 backdrop-blur card-3d">
+      <div className="relative border-b border-slate-700/50 bg-gradient-to-r from-slate-900 via-slate-800/40 to-slate-900 p-4 overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-15"
+          style={{
+            background: "radial-gradient(circle at top left, rgba(52, 211, 153, 0.2) 0%, transparent 60%)",
+          }}
+        />
+        <div className="relative mb-3 flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500/20 ring-1 ring-emerald-500/40 inner-sheen">
+            <FlaskConical className="h-3.5 w-3.5 text-emerald-400" />
+          </div>
+          <h2 className="text-base font-bold text-white glow-emerald">Chemical Shelf</h2>
+          <Badge variant="secondary" className="ml-auto bg-slate-700/80 text-slate-200 border border-slate-600/60 inner-sheen">
+            <span className="number-ticker">{filtered.length}</span>
           </Badge>
         </div>
 
@@ -111,12 +119,12 @@ export function ChemicalShelf() {
             placeholder="Search chemicals..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-slate-700 bg-slate-800 pl-8 text-white placeholder:text-slate-500"
+            className="border-slate-700 bg-slate-800/80 pl-8 text-white placeholder:text-slate-500 input-glow-focus transition-all"
           />
         </div>
 
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="border-slate-700 bg-slate-800 text-white">
+          <SelectTrigger className="border-slate-700 bg-slate-800/80 text-white">
             <SelectValue placeholder="Filter by category" />
           </SelectTrigger>
           <SelectContent className="bg-slate-800 border-slate-700 text-white">
@@ -129,19 +137,22 @@ export function ChemicalShelf() {
           </SelectContent>
         </Select>
 
-        <div className="mt-3 flex items-center gap-2">
-          <Label className="text-xs text-slate-400">Volume:</Label>
+        <div className="mt-3 flex items-center gap-2 rounded-md border border-slate-700/40 bg-slate-800/30 p-2">
+          <Label className="text-[10px] uppercase tracking-wider text-slate-400">Volume:</Label>
           <Input
             type="number"
             value={dragVolume}
             onChange={(e) => setDragVolume(Number(e.target.value))}
             min={1}
             max={250}
-            className="h-7 w-20 border-slate-700 bg-slate-800 text-xs text-white"
+            className="h-7 w-20 border-slate-700 bg-slate-900/60 text-xs text-white input-glow-focus"
           />
           <span className="text-xs text-slate-400">mL</span>
-          <div className="ml-auto flex items-center gap-1.5">
-            <Zap className={cn("h-3 w-3", autoReact ? "text-amber-400" : "text-slate-600")} />
+          <div className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 transition-all hover:bg-slate-700/30">
+            <Zap className={cn("h-3 w-3 transition-colors", autoReact ? "text-amber-400 glow-amber" : "text-slate-600")} />
+            <span className={cn("text-[10px] font-medium", autoReact ? "text-amber-300" : "text-slate-500")}>
+              Auto
+            </span>
             <Switch
               checked={autoReact}
               onCheckedChange={setAutoReact}
@@ -151,17 +162,21 @@ export function ChemicalShelf() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 custom-scrollbar">
         <div className="space-y-2 p-3">
-          {filtered.map((chem) => (
+          {filtered.map((chem, idx) => (
             <div
               key={chem.id}
-              className="group rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 transition-all hover:border-emerald-500/50 hover:bg-slate-800"
+              className="group chem-card-hover rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 transition-all hover:border-emerald-500/50 hover:bg-slate-800 hover:shadow-md hover:shadow-emerald-950/30 stagger-in"
+              style={{ animationDelay: `${Math.min(idx * 20, 400)}ms` }}
             >
               <div className="flex items-start gap-3">
                 <div
-                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-full border border-white/20"
-                  style={{ backgroundColor: chem.hexColor }}
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-full border border-white/20 shadow-inner"
+                  style={{
+                    backgroundColor: chem.hexColor,
+                    boxShadow: `0 0 8px ${chem.hexColor}40, inset 0 1px 0 rgba(255,255,255,0.3)`,
+                  }}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">

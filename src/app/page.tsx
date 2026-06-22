@@ -12,6 +12,8 @@ import { PeriodicTable } from "@/components/ui-panels/PeriodicTable";
 import { SolubilityRulesPanel } from "@/components/ui-panels/SolubilityRules";
 import { AchievementsPanel } from "@/components/ui-panels/AchievementsPanel";
 import { ReactionLibrary } from "@/components/ui-panels/ReactionLibrary";
+import { KineticsExplorer } from "@/components/ui-panels/KineticsExplorer";
+import { TitrationSimulator } from "@/components/ui-panels/TitrationSimulator";
 import { AnimatedCounter } from "@/components/ui-panels/AnimatedCounter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +33,8 @@ import {
   VolumeX,
   Zap,
   Trophy,
+  Activity,
+  Droplet,
 } from "lucide-react";
 import { useLabStore } from "@/lib/store/lab-store";
 import type { ChemicalData, ReactionData, ContainerState } from "@/lib/chemistry/types";
@@ -68,8 +72,8 @@ const LabScene = dynamic(
   }
 );
 
-type LeftPanel = "shelf" | "presets" | "reactions" | "periodic-table" | "solubility";
-type RightPanel = "instruments" | "safety" | "assistant" | "journal" | "saves" | "achievements";
+type LeftPanel = "shelf" | "presets" | "reactions" | "periodic-table" | "solubility" | "kinetics";
+type RightPanel = "instruments" | "safety" | "assistant" | "journal" | "saves" | "achievements" | "titration";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -394,11 +398,13 @@ export default function Home() {
     { id: "shelf", label: "Shelf", icon: Beaker },
     { id: "presets", label: "Presets", icon: Sparkles },
     { id: "reactions", label: "Rxns", icon: FlaskConical },
+    { id: "kinetics", label: "Kinetics", icon: Activity },
     { id: "periodic-table", label: "Elements", icon: Atom },
     { id: "solubility", label: "Solubility", icon: BookOpen },
   ];
   const rightPanelTabs: { id: RightPanel; label: string; icon: typeof Bot; badge?: number }[] = [
     { id: "instruments", label: "Lab", icon: FlaskConical },
+    { id: "titration", label: "Titrate", icon: Droplet },
     { id: "safety", label: "Safety", icon: Shield, badge: dangerCount || undefined },
     { id: "assistant", label: "AI", icon: Bot },
     { id: "saves", label: "Save", icon: Save },
@@ -504,36 +510,48 @@ export default function Home() {
             backgroundSize: "24px 24px",
           }}
         />
+        {/* Bottom accent line */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-px"
+          style={{
+            background: "linear-gradient(90deg, transparent, rgba(52, 211, 153, 0.5), rgba(6, 182, 212, 0.5), transparent)",
+          }}
+        />
 
         <div className="relative flex items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-cyan-500 to-blue-600 shadow-lg shadow-emerald-500/30">
-            <FlaskConical className="h-5 w-5 text-white" />
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-cyan-500 to-blue-600 shadow-lg shadow-emerald-500/30 inner-sheen">
+            <FlaskConical className="h-5 w-5 text-white relative z-10" />
             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-emerald-400/20 to-transparent" />
             {/* Animated pulse ring */}
             <div className="absolute inset-0 animate-ping rounded-xl bg-emerald-500/20" style={{ animationDuration: "3s" }} />
+            {/* Corner accent */}
+            <div className="absolute -inset-0.5 rounded-xl border border-emerald-400/30" />
           </div>
           <div>
-            <h1 className="bg-gradient-to-r from-emerald-300 via-cyan-300 to-blue-300 bg-clip-text text-base font-bold text-transparent">
+            <h1 className="bg-gradient-to-r from-emerald-300 via-cyan-300 to-blue-300 bg-clip-text text-base font-bold text-transparent glow-emerald">
               The Molecular Sandbox
             </h1>
             <div className="flex items-center gap-2 text-[10px] text-slate-400">
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 hover-dot">
                 <Atom className="h-2.5 w-2.5 text-emerald-400" />
                 <AnimatedCounter value={chemicals.length} className="number-ticker font-medium text-slate-300" />
                 <span className="text-slate-500">chemicals</span>
               </span>
               <span className="text-slate-600">·</span>
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 hover-dot">
+                <FlaskConical className="h-2.5 w-2.5 text-cyan-400" />
                 <AnimatedCounter value={reactions.length} className="number-ticker font-medium text-slate-300" />
                 <span className="text-slate-500">reactions</span>
               </span>
               <span className="text-slate-600">·</span>
-              <span className="flex items-center gap-1">
-                <span className={cn("h-1.5 w-1.5 rounded-full", ppeCount >= 3 ? "bg-emerald-400" : "bg-yellow-400")} />
+              <span className="flex items-center gap-1 hover-dot">
+                <Shield className={cn("h-2.5 w-2.5", ppeCount >= 3 ? "text-emerald-400" : "text-yellow-400")} />
+                <span className={cn("h-1.5 w-1.5 rounded-full", ppeCount >= 3 ? "bg-emerald-400 status-blink" : "bg-yellow-400 status-blink")} />
                 <AnimatedCounter value={ppeCount} className="number-ticker font-medium text-slate-300" />/4 PPE
               </span>
               <span className="text-slate-600">·</span>
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 hover-dot">
+                <Droplet className="h-2.5 w-2.5 text-cyan-400" />
                 <AnimatedCounter value={totalVolume} decimals={0} className="number-ticker font-medium text-cyan-300" />
                 <span className="text-slate-500">mL total</span>
               </span>
@@ -544,8 +562,8 @@ export default function Home() {
         {/* Center: beaker selection status */}
         <div className="relative hidden md:flex items-center gap-2">
           {selectedContainerId ? (
-            <Badge className="border-emerald-500/40 bg-emerald-950/40 text-emerald-300">
-              <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <Badge className="border-emerald-500/40 bg-emerald-950/40 text-emerald-300 selection-ring-pulse">
+              <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-400 status-blink" />
               {selectedContainerId.toUpperCase()}
             </Badge>
           ) : (
@@ -555,9 +573,9 @@ export default function Home() {
           )}
           {secondaryContainerId && (
             <>
-              <span className="text-slate-600">→</span>
-              <Badge className="border-amber-500/40 bg-amber-950/40 text-amber-300">
-                <span className="mr-1 h-1.5 w-1.5 rounded-full bg-amber-400" />
+              <span className="text-amber-400 font-bold animate-pulse">→</span>
+              <Badge className="border-amber-500/40 bg-amber-950/40 text-amber-300 secondary-ring-pulse">
+                <span className="mr-1 h-1.5 w-1.5 rounded-full bg-amber-400 status-blink" />
                 {secondaryContainerId.toUpperCase()}
               </Badge>
             </>
@@ -570,11 +588,12 @@ export default function Home() {
             variant="ghost"
             size="sm"
             onClick={() => toggleSound()}
-            className={
+            className={cn(
+              "btn-premium h-8 px-2 text-xs",
               soundEnabled
-                ? "text-emerald-400 hover:bg-slate-800 hover:text-emerald-300"
+                ? "text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300"
                 : "text-slate-500 hover:bg-slate-800 hover:text-slate-300"
-            }
+            )}
             title="Toggle sound (M)"
           >
             {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
@@ -583,7 +602,7 @@ export default function Home() {
             variant="ghost"
             size="sm"
             onClick={handleReset}
-            className="text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="btn-premium h-8 px-3 text-xs text-slate-300 hover:text-white"
           >
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
             Reset
@@ -594,9 +613,9 @@ export default function Home() {
       {/* Main 3-column layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left panel — Shelf / Presets */}
-        <aside className="flex w-80 flex-shrink-0 flex-col border-r border-slate-800 bg-slate-950/50">
+        <aside className="flex w-80 flex-shrink-0 flex-col border-r border-slate-800 bg-slate-950/50 dotted-texture">
           {/* Left panel tabs */}
-          <div className="flex gap-1 border-b border-slate-800 bg-slate-950/50 p-2">
+          <div className="flex gap-1 border-b border-slate-800 bg-slate-950/80 p-2">
             {leftPanelTabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -604,13 +623,13 @@ export default function Home() {
                   key={tab.id}
                   onClick={() => setLeftPanel(tab.id)}
                   className={cn(
-                    "tab-indicator flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                    "tab-indicator relative flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200",
                     leftPanel === tab.id
-                      ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm shadow-emerald-500/30"
-                      : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                      ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm shadow-emerald-500/30 tab-glow-active inner-sheen"
+                      : "text-slate-400 hover:bg-slate-800/60 hover:text-white hover:scale-105"
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className={cn("h-3.5 w-3.5 transition-transform", leftPanel === tab.id && "scale-110")} />
                   {tab.label}
                 </button>
               );
@@ -620,6 +639,7 @@ export default function Home() {
             {leftPanel === "shelf" && <ChemicalShelf />}
             {leftPanel === "presets" && <PresetExperiments />}
             {leftPanel === "reactions" && <ReactionLibrary />}
+            {leftPanel === "kinetics" && <KineticsExplorer />}
             {leftPanel === "periodic-table" && <PeriodicTable />}
             {leftPanel === "solubility" && <SolubilityRulesPanel />}
           </div>
@@ -633,25 +653,25 @@ export default function Home() {
           <div className="pointer-events-none absolute left-4 top-4 flex flex-col gap-2">
             <Badge
               variant="outline"
-              className="border-slate-600/50 bg-slate-900/70 px-3 py-1 text-xs text-slate-300 backdrop-blur"
+              className="border-emerald-500/40 bg-slate-900/80 px-3 py-1 text-xs text-emerald-300 backdrop-blur shadow-lg shadow-emerald-950/30 inner-sheen"
             >
-              <span className="mr-1.5 h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+              <span className="mr-1.5 h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 status-blink" />
               Lab Active
             </Badge>
             {/* Mini stats card */}
-            <div className="pointer-events-none rounded-lg border border-slate-700/50 bg-slate-900/70 px-3 py-2 backdrop-blur">
+            <div className="pointer-events-none rounded-lg border border-slate-700/60 bg-slate-900/80 px-3 py-2 backdrop-blur shadow-xl corner-accent">
               <div className="grid grid-cols-3 gap-3 text-center">
-                <div>
-                  <div className="text-base font-bold text-emerald-400">{containers.length}</div>
-                  <div className="text-[9px] text-slate-500">Beakers</div>
+                <div className="stat-tile-pop">
+                  <div className="text-base font-bold text-emerald-400 glow-emerald">{containers.length}</div>
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider">Beakers</div>
                 </div>
-                <div>
-                  <div className="text-base font-bold text-cyan-400">{totalContents}</div>
-                  <div className="text-[9px] text-slate-500">Contents</div>
+                <div className="stat-tile-pop">
+                  <div className="text-base font-bold text-cyan-400 glow-cyan">{totalContents}</div>
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider">Contents</div>
                 </div>
-                <div>
-                  <div className="text-base font-bold text-purple-400">{totalVolume.toFixed(0)}</div>
-                  <div className="text-[9px] text-slate-500">mL total</div>
+                <div className="stat-tile-pop">
+                  <div className="text-base font-bold text-purple-400 glow-purple">{totalVolume.toFixed(0)}</div>
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider">mL total</div>
                 </div>
               </div>
             </div>
@@ -659,30 +679,30 @@ export default function Home() {
 
           {/* Bottom overlay: controls hint */}
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2">
-            <div className="flex items-center gap-2 rounded-full border border-slate-700/50 bg-slate-900/80 px-4 py-1.5 backdrop-blur">
+            <div className="flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-900/85 px-4 py-1.5 backdrop-blur shadow-xl inner-sheen">
               <span className="text-[10px] text-slate-400">🖱️ Drag rotate</span>
               <span className="text-slate-600">·</span>
               <span className="text-[10px] text-slate-400">Scroll zoom</span>
               <span className="text-slate-600">·</span>
               <span className="text-[10px] text-slate-400">Click select</span>
               <span className="text-slate-600">·</span>
-              <span className="text-[10px] text-amber-400">⇧+Click pour</span>
+              <span className="text-[10px] text-amber-400 hover-dot">⇧+Click pour</span>
               <span className="text-slate-600">·</span>
-              <span className="text-[10px] text-emerald-400">⌨ 1/2/3 R H E P T M</span>
+              <span className="text-[10px] text-emerald-400 glow-emerald">⌨ 1/2/3 R H E P T M</span>
             </div>
           </div>
 
           {/* Reaction in-progress overlay (top center) */}
           {reactingContainerId && reactionProgress > 0 && (
-            <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2">
-              <div className="flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-950/80 px-4 py-1.5 backdrop-blur">
+            <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 z-10">
+              <div className="flex items-center gap-2 rounded-full border border-amber-500/50 bg-amber-950/85 px-4 py-1.5 backdrop-blur shadow-xl shadow-amber-900/40 inner-sheen indicator-breathe">
                 <Zap className="h-3 w-3 animate-pulse text-amber-400" />
-                <span className="text-[10px] font-medium text-amber-200">
+                <span className="text-[10px] font-medium text-amber-200 glow-amber">
                   Reaction in {reactingContainerId.toUpperCase()}
                 </span>
-                <div className="ml-1 h-1 w-16 overflow-hidden rounded-full bg-slate-700">
+                <div className="ml-1 h-1 w-20 overflow-hidden rounded-full bg-slate-700">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-amber-400 to-yellow-200"
+                    className="h-full rounded-full bg-gradient-to-r from-amber-400 to-yellow-200 progress-shine"
                     style={{ width: `${reactionProgress * 100}%` }}
                   />
                 </div>
@@ -694,12 +714,12 @@ export default function Home() {
           {(dangerCount > 0 || warningCount > 0) && (
             <div className="absolute right-4 top-4 flex flex-col gap-1">
               {dangerCount > 0 && (
-                <Badge className="animate-pulse border-red-500 bg-red-600 text-white">
+                <Badge className="border-red-400 bg-red-600/90 text-white shadow-lg shadow-red-900/40 danger-pulse inner-sheen">
                   ⚠ {dangerCount} Danger
                 </Badge>
               )}
               {warningCount > 0 && (
-                <Badge className="border-amber-500 bg-amber-600 text-white">
+                <Badge className="border-amber-400 bg-amber-600/90 text-white shadow-lg shadow-amber-900/40 inner-sheen">
                   {warningCount} Warning
                 </Badge>
               )}
@@ -747,9 +767,9 @@ export default function Home() {
         </main>
 
         {/* Right panel — Instruments / Safety / AI / Saves / Journal */}
-        <aside className="flex w-96 flex-shrink-0 flex-col border-l border-slate-800 bg-slate-950/50">
+        <aside className="flex w-96 flex-shrink-0 flex-col border-l border-slate-800 bg-slate-950/50 dotted-texture">
           {/* Right panel tabs */}
-          <div className="flex gap-1 border-b border-slate-800 bg-slate-950/50 p-2">
+          <div className="flex gap-1 border-b border-slate-800 bg-slate-950/80 p-2">
             {rightPanelTabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -757,16 +777,16 @@ export default function Home() {
                   key={tab.id}
                   onClick={() => setRightPanel(tab.id)}
                   className={cn(
-                    "tab-indicator relative flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
+                    "tab-indicator relative flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-[11px] font-medium transition-all duration-200",
                     rightPanel === tab.id
-                      ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm shadow-emerald-500/30"
-                      : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                      ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm shadow-emerald-500/30 tab-glow-active inner-sheen"
+                      : "text-slate-400 hover:bg-slate-800/60 hover:text-white hover:scale-105"
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className={cn("h-3.5 w-3.5 transition-transform", rightPanel === tab.id && "scale-110")} />
                   {tab.label}
                   {tab.badge && tab.badge > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white status-blink border border-red-300/50">
                       {tab.badge}
                     </span>
                   )}
@@ -778,6 +798,11 @@ export default function Home() {
             {rightPanel === "instruments" && (
               <div className="h-full overflow-y-auto p-3">
                 <InstrumentPanel />
+              </div>
+            )}
+            {rightPanel === "titration" && (
+              <div className="h-full overflow-y-auto p-3">
+                <TitrationSimulator />
               </div>
             )}
             {rightPanel === "safety" && (

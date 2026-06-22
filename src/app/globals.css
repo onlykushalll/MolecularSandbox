@@ -884,3 +884,791 @@ input[type="range"].flame-slider::-moz-range-thumb {
 .border-l-double-replacement { border-left: 3px solid #3b82f6; }
 .border-l-combustion { border-left: 3px solid #ef4444; }
 
+
+/* ============================================== */
+/* ROUND 8 — Advanced Styling Enhancements         */
+/* ============================================== */
+
+/* Premium glass card with multi-layer effect */
+.glass-premium {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(2, 6, 23, 0.95) 100%);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+.glass-premium::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.04) 0%, transparent 30%);
+  pointer-events: none;
+}
+
+/* Custom scrollbar with premium feel */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(71, 85, 105, 0.5) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(2, 6, 23, 0.4);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(71, 85, 105, 0.7), rgba(51, 65, 85, 0.7));
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.5), rgba(6, 182, 212, 0.5));
+}
+
+/* Stat tile with subtle pop animation */
+.stat-tile-pop {
+  position: relative;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent);
+  transition: all 0.2s ease;
+}
+.stat-tile-pop:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(6, 182, 212, 0.05));
+  transform: translateY(-1px);
+}
+
+/* Number ticker (count-up effect) */
+.number-ticker {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Timer pulse — used for session timer dot */
+.timer-pulse {
+  animation: timer-pulse-anim 2s ease-in-out infinite;
+}
+@keyframes timer-pulse-anim {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* Panel fade transition — used when switching tabs */
+.panel-fade {
+  animation: panel-fade-anim 0.3s ease-out;
+}
+@keyframes panel-fade-anim {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tab indicator — sliding underline effect */
+.tab-indicator {
+  position: relative;
+  overflow: hidden;
+}
+.tab-indicator::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #34d399, #22d3ee);
+  transition: width 0.25s ease, left 0.25s ease;
+}
+.tab-indicator:hover::after {
+  width: 60%;
+  left: 20%;
+}
+
+/* Animated gradient border */
+.gradient-border {
+  position: relative;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.4), rgba(6, 182, 212, 0.4), rgba(139, 92, 246, 0.3));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Glow text shadow utilities */
+.glow-emerald { text-shadow: 0 0 12px rgba(52, 211, 153, 0.5); }
+.glow-amber { text-shadow: 0 0 12px rgba(251, 191, 36, 0.5); }
+.glow-red { text-shadow: 0 0 12px rgba(239, 68, 68, 0.5); }
+.glow-cyan { text-shadow: 0 0 12px rgba(34, 211, 238, 0.5); }
+.glow-purple { text-shadow: 0 0 12px rgba(168, 85, 247, 0.5); }
+
+/* Shimmer effect for loading states */
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.05) 0%,
+    rgba(148, 163, 184, 0.15) 50%,
+    rgba(148, 163, 184, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-anim 2s ease-in-out infinite;
+}
+
+/* Progress bar shine effect */
+.progress-shine {
+  position: relative;
+  overflow: hidden;
+}
+.progress-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: progress-shine-anim 2s ease-in-out infinite;
+}
+@keyframes progress-shine-anim {
+  0% { left: -50%; }
+  100% { left: 150%; }
+}
+
+/* Active ring pulse — for active buttons */
+.active-ring {
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+  animation: active-ring 1.5s ease-out infinite;
+}
+@keyframes active-ring {
+  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); }
+  100% { box-shadow: 0 0 0 12px rgba(52, 211, 153, 0); }
+}
+
+/* Fade-in-up entrance */
+.fade-in-up {
+  animation: fade-in-up 0.4s ease-out;
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tooltip fade */
+.tooltip-fade {
+  animation: tooltip-fade 0.2s ease-out;
+}
+@keyframes tooltip-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Danger pulse — for danger alerts */
+.danger-pulse {
+  animation: danger-pulse-anim 1.5s ease-in-out infinite;
+}
+@keyframes danger-pulse-anim {
+  0%, 100% { background-color: rgba(239, 68, 68, 0.15); }
+  50% { background-color: rgba(239, 68, 68, 0.3); }
+}
+
+/* Heat shimmer — for hot elements */
+.heat-shimmer {
+  filter: blur(0.3px);
+  animation: heat-shimmer-anim 2s ease-in-out infinite;
+}
+@keyframes heat-shimmer-anim {
+  0%, 100% { filter: blur(0.3px); }
+  50% { filter: blur(0.6px); }
+}
+
+/* Header gradient underline */
+.header-underline {
+  position: relative;
+}
+.header-underline::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(52, 211, 153, 0.6), transparent);
+}
+
+/* Exo/endo glow for reaction indicators */
+.exo-glow {
+  animation: exo-pulse-anim 1.5s ease-in-out infinite;
+}
+@keyframes exo-pulse-anim {
+  0%, 100% { box-shadow: 0 0 12px rgba(239, 68, 68, 0.2); }
+  50% { box-shadow: 0 0 24px rgba(239, 68, 68, 0.5); }
+}
+.endo-glow {
+  animation: endo-pulse-anim 1.5s ease-in-out infinite;
+}
+@keyframes endo-pulse-anim {
+  0%, 100% { box-shadow: 0 0 12px rgba(59, 130, 246, 0.2); }
+  50% { box-shadow: 0 0 24px rgba(59, 130, 246, 0.5); }
+}
+
+/* Modal entrance */
+.modal-enter {
+  animation: modal-enter-anim 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modal-enter-anim {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Stagger-in list item entrance */
+.stagger-in {
+  animation: stagger-in-anim 0.4s ease-out backwards;
+}
+@keyframes stagger-in-anim {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Element glow — for periodic table hover */
+.element-glow {
+  transition: all 0.2s ease;
+}
+.element-glow:hover {
+  filter: brightness(1.3);
+  box-shadow: 0 0 12px currentColor;
+}
+
+/* Badge shine effect */
+.badge-shine {
+  position: relative;
+  overflow: hidden;
+}
+.badge-shine::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -100%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transform: rotate(20deg);
+  animation: badge-shine-anim 3s ease-in-out infinite;
+}
+@keyframes badge-shine-anim {
+  0%, 100% { left: -100%; }
+  50% { left: 200%; }
+}
+
+/* Tab switch animation */
+.tab-switch {
+  animation: tab-switch-anim 0.3s ease-out;
+}
+@keyframes tab-switch-anim {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Settle animation for precipitates */
+.settle {
+  animation: settle-anim 1s ease-in;
+}
+@keyframes settle-anim {
+  0% { transform: translateY(-20px); opacity: 0; }
+  60% { transform: translateY(2px); opacity: 1; }
+  80% { transform: translateY(-1px); }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Status blink — for status dots */
+.status-blink {
+  animation: status-blink-anim 1.5s ease-in-out infinite;
+}
+@keyframes status-blink-anim {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Flame intensity animation — for Bunsen burner */
+.flame-intensity {
+  animation: flame-intensity-anim 0.15s ease-in-out infinite alternate;
+}
+@keyframes flame-intensity-anim {
+  from { transform: scaleY(1) translateY(0); opacity: 0.95; }
+  to { transform: scaleY(1.05) translateY(-1px); opacity: 1; }
+}
+
+/* ===== Round 8 NEW: Premium polish ===== */
+
+/* Card with corner accent */
+.corner-accent {
+  position: relative;
+}
+.corner-accent::before,
+.corner-accent::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+.corner-accent::before {
+  top: 0;
+  left: 0;
+  border-top: 2px solid rgba(52, 211, 153, 0.6);
+  border-left: 2px solid rgba(52, 211, 153, 0.6);
+  border-top-left-radius: 6px;
+}
+.corner-accent::after {
+  bottom: 0;
+  right: 0;
+  border-bottom: 2px solid rgba(6, 182, 212, 0.5);
+  border-right: 2px solid rgba(6, 182, 212, 0.5);
+  border-bottom-right-radius: 6px;
+}
+
+/* Glow ring rotating border */
+.glow-ring {
+  position: relative;
+}
+.glow-ring::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--angle, 0deg),
+    rgba(52, 211, 153, 0.6),
+    rgba(6, 182, 212, 0.6),
+    rgba(139, 92, 246, 0.6),
+    rgba(52, 211, 153, 0.6)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: glow-ring-rotate 4s linear infinite;
+  pointer-events: none;
+}
+@keyframes glow-ring-rotate {
+  0% { --angle: 0deg; transform: rotate(0deg); }
+  100% { --angle: 360deg; transform: rotate(360deg); }
+}
+
+/* Holographic shimmer for badges */
+.holographic {
+  background: linear-gradient(
+    135deg,
+    rgba(52, 211, 153, 0.15) 0%,
+    rgba(6, 182, 212, 0.15) 25%,
+    rgba(139, 92, 246, 0.15) 50%,
+    rgba(236, 72, 153, 0.15) 75%,
+    rgba(52, 211, 153, 0.15) 100%
+  );
+  background-size: 200% 200%;
+  animation: holographic-anim 4s ease infinite;
+}
+@keyframes holographic-anim {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Subtle dotted texture overlay */
+.dotted-texture {
+  background-image: radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.08) 1px, transparent 0);
+  background-size: 16px 16px;
+}
+
+/* Inner gradient sheen — for premium buttons */
+.inner-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.inner-sheen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent);
+  pointer-events: none;
+}
+
+/* Number stepper for sliders */
+.slider-track-glow::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, rgba(52, 211, 153, 0.4), rgba(6, 182, 212, 0.4));
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
+}
+
+/* Chart axis dashed */
+.chart-grid-line {
+  stroke-dasharray: 2, 2;
+  stroke: rgba(100, 116, 139, 0.15);
+}
+
+/* Pulse ring expand */
+.pulse-ring-expand {
+  animation: pulse-ring-expand-anim 2s ease-out infinite;
+}
+@keyframes pulse-ring-expand-anim {
+  0% { transform: scale(0.95); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* Reaction complete burst — for reaction VFX */
+.reaction-burst {
+  animation: reaction-burst-anim 0.6s ease-out;
+}
+@keyframes reaction-burst-anim {
+  0% { transform: scale(0.5); opacity: 0; }
+  40% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Scroll snap for tabs */
+.tab-scroll-snap {
+  scroll-snap-type: x mandatory;
+}
+.tab-scroll-snap > * {
+  scroll-snap-align: start;
+}
+
+/* Drop shadow for floating elements */
+.float-shadow {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+/* Hover lift with rotate */
+.hover-lift-rotate {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-lift-rotate:hover {
+  transform: translateY(-2px) rotate(-0.5deg);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* Subtle gradient overlay for cards */
+.gradient-overlay {
+  position: relative;
+}
+.gradient-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, transparent 60%, rgba(0, 0, 0, 0.2));
+  pointer-events: none;
+}
+
+/* Pulse for active heating indicator */
+.heat-indicator-pulse {
+  animation: heat-indicator-pulse-anim 1.2s ease-in-out infinite;
+}
+@keyframes heat-indicator-pulse-anim {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.15); }
+}
+
+/* Selection ring — for selected beaker indicator */
+.selection-ring-pulse {
+  animation: selection-ring-pulse-anim 2s ease-in-out infinite;
+}
+@keyframes selection-ring-pulse-anim {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.6), 0 0 16px rgba(52, 211, 153, 0.3); }
+  50% { box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.8), 0 0 24px rgba(52, 211, 153, 0.5); }
+}
+
+/* Secondary selection ring (amber for pour target) */
+.secondary-ring-pulse {
+  animation: secondary-ring-pulse-anim 2s ease-in-out infinite;
+}
+@keyframes secondary-ring-pulse-anim {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.6), 0 0 16px rgba(251, 191, 36, 0.3); }
+  50% { box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.8), 0 0 24px rgba(251, 191, 36, 0.5); }
+}
+
+/* Premium dark button style */
+.btn-premium {
+  position: relative;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(71, 85, 105, 0.6);
+  color: rgba(226, 232, 240, 0.95);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+.btn-premium:hover {
+  background: linear-gradient(180deg, rgba(51, 65, 85, 0.95), rgba(30, 41, 59, 0.95));
+  border-color: rgba(52, 211, 153, 0.5);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(52, 211, 153, 0.2);
+}
+.btn-premium:active {
+  transform: translateY(0);
+}
+
+/* Concentration gradient badge */
+.concentration-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.6), rgba(251, 191, 36, 0.6), rgba(239, 68, 68, 0.6));
+  overflow: hidden;
+}
+.concentration-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: var(--conc, 50%);
+  background: rgba(15, 23, 42, 0.85);
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Beaker capacity bar */
+.capacity-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(30, 41, 59, 0.6);
+  overflow: hidden;
+}
+.capacity-bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, #22d3ee, #3b82f6);
+  transition: width 0.4s ease;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
+}
+
+/* Smooth color transition for liquid indicators */
+.color-shift {
+  transition: color 0.4s ease, background-color 0.4s ease;
+}
+
+/* Tooltip arrow */
+.tooltip-arrow::before {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: inherit;
+}
+
+/* Sticky footer fallback for modal */
+.modal-backdrop {
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+}
+
+/* Soft glow border for inputs on focus */
+.input-glow-focus:focus {
+  outline: none;
+  border-color: rgba(52, 211, 153, 0.6);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
+}
+
+/* Indicator badge pulse for in-progress reactions */
+.indicator-breathe {
+  animation: indicator-breathe-anim 1.5s ease-in-out infinite;
+}
+@keyframes indicator-breathe-anim {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.85; }
+}
+
+/* Loading spinner rings */
+.triple-spinner {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+}
+.triple-spinner::before,
+.triple-spinner::after,
+.triple-spinner > span {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+.triple-spinner::before {
+  border-top-color: rgba(52, 211, 153, 0.8);
+  animation: spin 1.2s linear infinite;
+}
+.triple-spinner::after {
+  border-right-color: rgba(6, 182, 212, 0.6);
+  animation: spin 1.8s linear infinite reverse;
+  inset: 4px;
+}
+.triple-spinner > span {
+  border-bottom-color: rgba(139, 92, 246, 0.6);
+  animation: spin 1.5s linear infinite;
+  inset: 8px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Slide in from right (used in toasts) */
+.slide-in-right {
+  animation: slide-in-right-anim 0.3s ease-out;
+}
+@keyframes slide-in-right-anim {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Glow pulse for selected tab */
+.tab-glow-active {
+  box-shadow:
+    0 0 0 1px rgba(52, 211, 153, 0.4),
+    0 0 16px rgba(52, 211, 153, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Hover indicator dot */
+.hover-dot {
+  position: relative;
+}
+.hover-dot::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(52, 211, 153, 0.8);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.hover-dot:hover::after {
+  opacity: 1;
+}
+
+/* Drop shadow for floating tooltips */
+.tooltip-shadow {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+/* Premium hover effect for chemical cards */
+.chem-card-hover {
+  position: relative;
+  transition: all 0.25s ease;
+}
+.chem-card-hover::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #34d399, #22d3ee);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.25s ease;
+  border-radius: 2px;
+}
+.chem-card-hover:hover::before {
+  transform: scaleY(1);
+}
+.chem-card-hover:hover {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+/* CSS-only progress bar */
+.progress-bar-animated {
+  position: relative;
+  overflow: hidden;
+}
+.progress-bar-animated > div {
+  position: relative;
+  height: 100%;
+  background: linear-gradient(90deg, #34d399, #22d3ee);
+  transition: width 0.5s ease;
+}
+.progress-bar-animated > div::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: progress-shine-anim 2s linear infinite;
+}
+
+/* Soft inner shadow for cards */
+.soft-inner-shadow {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Premium 3D card with multi-layer shadow */
+.card-3d {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%);
+  border: 1px solid rgba(51, 65, 85, 0.4);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.4) inset,
+    0 4px 12px -2px rgba(0, 0, 0, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Live data blink for real-time values */
+.live-blink {
+  animation: live-blink-anim 1.5s ease-in-out infinite;
+}
+@keyframes live-blink-anim {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Trending arrow bounce */
+.trend-up {
+  animation: trend-bounce-up 1.5s ease-in-out infinite;
+}
+@keyframes trend-bounce-up {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+.trend-down {
+  animation: trend-bounce-down 1.5s ease-in-out infinite;
+}
+@keyframes trend-bounce-down {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(2px); }
+}

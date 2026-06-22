@@ -106,18 +106,42 @@ export function InstrumentPanel() {
   const canPour = !!secondary && totalVolume > 0;
 
   return (
-    <Card className="border-slate-700/50 bg-slate-900/95 backdrop-blur">
-      <div className="border-b border-slate-700/50 bg-gradient-to-r from-slate-900 to-slate-800/50 p-4">
-        <div className="flex items-center justify-between">
+    <Card className="border-slate-700/50 bg-slate-900/95 backdrop-blur card-3d">
+      <div className="relative border-b border-slate-700/50 bg-gradient-to-r from-slate-900 via-slate-800/60 to-slate-900 p-4 overflow-hidden">
+        {/* Background pattern */}
+        <div
+          className="absolute inset-0 opacity-20"
+          style={{
+            background: "radial-gradient(circle at top right, rgba(52, 211, 153, 0.15) 0%, transparent 60%)",
+          }}
+        />
+        <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 ring-1 ring-emerald-500/40">
-              <FlaskConical className="h-4 w-4 text-emerald-400" />
+            <div className={cn(
+              "relative flex h-8 w-8 items-center justify-center rounded-lg ring-1",
+              selected.isBroken
+                ? "bg-red-500/20 ring-red-500/40"
+                : selected.isHeating
+                ? "bg-orange-500/20 ring-orange-500/40 heat-indicator-pulse"
+                : "bg-emerald-500/20 ring-emerald-500/40"
+            )}>
+              <FlaskConical className={cn(
+                "h-4 w-4",
+                selected.isBroken ? "text-red-400" : selected.isHeating ? "text-orange-400" : "text-emerald-400"
+              )} />
+              {selected.isHeating && (
+                <div className="absolute inset-0 rounded-lg ring-2 ring-orange-400/40 animate-ping" />
+              )}
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white">
+              <h2 className="text-sm font-bold text-white glow-emerald">
                 {selected.id.toUpperCase()}
               </h2>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                <span className={cn(
+                  "inline-block h-1.5 w-1.5 rounded-full",
+                  selected.isBroken ? "bg-red-400" : selected.isHeating ? "bg-orange-400 status-blink" : "bg-slate-500"
+                )} />
                 {selected.isBroken ? "⚠ BROKEN" : selected.isHeating ? "🔥 Heating" : "⚪ Idle"} · {selected.contents.length} contents
               </p>
             </div>
@@ -127,11 +151,12 @@ export function InstrumentPanel() {
               size="sm"
               variant="ghost"
               onClick={() => togglePHStrip()}
-              className={
+              className={cn(
+                "h-7 transition-all",
                 showPHStrip
-                  ? "h-7 bg-pink-500/20 text-pink-300 hover:bg-pink-500/30"
-                  : "h-7 text-slate-400 hover:bg-slate-800 hover:text-white"
-              }
+                  ? "bg-pink-500/20 text-pink-300 hover:bg-pink-500/30 ring-1 ring-pink-500/40 inner-sheen"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+              )}
               title="Toggle pH test strip (T)"
             >
               <TestTube className="h-3.5 w-3.5" />
@@ -142,14 +167,15 @@ export function InstrumentPanel() {
               onClick={() => toggleSound()}
               className={
                 soundEnabled
-                  ? "h-7 text-emerald-300 hover:bg-slate-800"
+                  ? "h-7 text-emerald-300 hover:bg-slate-800 ring-1 ring-emerald-500/30"
                   : "h-7 text-slate-500 hover:bg-slate-800"
               }
               title="Toggle sound (M)"
             >
               {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
             </Button>
-            <Badge variant="outline" className="border-slate-600 text-slate-300">
+            <Badge variant="outline" className="border-slate-600/60 bg-slate-900/60 text-slate-300 inner-sheen">
+              <FlaskConical className="mr-1 h-2.5 w-2.5 text-cyan-400" />
               {selected.capacity} mL max
             </Badge>
           </div>
