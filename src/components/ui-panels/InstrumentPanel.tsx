@@ -23,12 +23,14 @@ import {
   TestTubes,
   Beaker as BeakerIcon,
   Sun,
+  Activity,
 } from "lucide-react";
 import type { ContainerType } from "@/lib/chemistry/types";
 import { useLabStore } from "@/lib/store/lab-store";
 import { calculatePH, phToColor, phLabel } from "@/lib/chemistry/mixture";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useHistory, Sparkline } from "@/components/ui-panels/Sparkline";
 
 export function InstrumentPanel() {
   const containers = useLabStore((s) => s.containers);
@@ -52,6 +54,19 @@ export function InstrumentPanel() {
 
   const selected = containers.find((c) => c.id === selectedContainerId);
   const secondary = containers.find((c) => c.id === secondaryContainerId);
+
+  // Live history tracking — sample temperature and pH every 1s, keep last 60 samples
+  const selectedId = selected?.id;
+  const tempHistory = useHistory<number>(() => {
+    const c = useLabStore.getState().containers.find((cc) => cc.id === selectedId);
+    return c ? c.temperature : 25;
+  }, 1000, 60, selectedId);
+  const phHistory = useHistory<number>(() => {
+    const state = useLabStore.getState();
+    const c = state.containers.find((cc) => cc.id === selectedId);
+    if (!c) return 7;
+    return calculatePH(c.contents, state.chemicalsMap);
+  }, 1000, 60, selectedId);
 
   if (!selected) {
     return (
@@ -222,6 +237,55 @@ export function InstrumentPanel() {
                 background: `linear-gradient(90deg, #3b82f6 0%, #22c55e 50%, #ef4444 100%)`,
               }}
             />
+          </div>
+        </div>
+
+        {/* Live temperature & pH sparklines */}
+        <div className="rounded-lg border border-slate-700/40 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Activity className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="text-xs font-medium text-slate-300">Live Trends</span>
+            <span className="ml-auto text-[9px] text-slate-500">last 60s</span>
+          </div>
+          <div className="space-y-2">
+            <div>
+              <div className="mb-0.5 flex items-center justify-between text-[10px]">
+                <span className="flex items-center gap-1 text-slate-400">
+                  <Thermometer className="h-2.5 w-2.5 text-orange-400" /> Temperature
+                </span>
+                <span className="font-mono font-bold text-orange-300">
+                  {tempHistory.length > 0 ? tempHistory[tempHistory.length - 1].toFixed(1) : "—"}°C
+                </span>
+              </div>
+              <Sparkline
+                data={tempHistory}
+                width={300}
+                height={36}
+                color="#fb923c"
+                fillColor="#fb923c22"
+                min={0}
+                max={150}
+              />
+            </div>
+            <div>
+              <div className="mb-0.5 flex items-center justify-between text-[10px]">
+                <span className="flex items-center gap-1 text-slate-400">
+                  <Droplets className="h-2.5 w-2.5 text-pink-400" /> pH Level
+                </span>
+                <span className="font-mono font-bold" style={{ color: pHColor }}>
+                  {phHistory.length > 0 ? phHistory[phHistory.length - 1].toFixed(2) : "—"}
+                </span>
+              </div>
+              <Sparkline
+                data={phHistory}
+                width={300}
+                height={36}
+                color={pHColor}
+                fillColor={pHColor + "22"}
+                min={0}
+                max={14}
+              />
+            </div>
           </div>
         </div>
 

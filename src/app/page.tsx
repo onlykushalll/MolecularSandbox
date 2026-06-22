@@ -11,6 +11,8 @@ import { SaveLoadPanel } from "@/components/ui-panels/SaveLoadPanel";
 import { PeriodicTable } from "@/components/ui-panels/PeriodicTable";
 import { SolubilityRulesPanel } from "@/components/ui-panels/SolubilityRules";
 import { AchievementsPanel } from "@/components/ui-panels/AchievementsPanel";
+import { ReactionLibrary } from "@/components/ui-panels/ReactionLibrary";
+import { AnimatedCounter } from "@/components/ui-panels/AnimatedCounter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -66,7 +68,7 @@ const LabScene = dynamic(
   }
 );
 
-type LeftPanel = "shelf" | "presets" | "periodic-table" | "solubility";
+type LeftPanel = "shelf" | "presets" | "reactions" | "periodic-table" | "solubility";
 type RightPanel = "instruments" | "safety" | "assistant" | "journal" | "saves" | "achievements";
 
 export default function Home() {
@@ -391,6 +393,7 @@ export default function Home() {
   const leftPanelTabs: { id: LeftPanel; label: string; icon: typeof Beaker }[] = [
     { id: "shelf", label: "Shelf", icon: Beaker },
     { id: "presets", label: "Presets", icon: Sparkles },
+    { id: "reactions", label: "Rxns", icon: FlaskConical },
     { id: "periodic-table", label: "Elements", icon: Atom },
     { id: "solubility", label: "Solubility", icon: BookOpen },
   ];
@@ -516,17 +519,24 @@ export default function Home() {
             <div className="flex items-center gap-2 text-[10px] text-slate-400">
               <span className="flex items-center gap-1">
                 <Atom className="h-2.5 w-2.5 text-emerald-400" />
-                {chemicals.length} chemicals
+                <AnimatedCounter value={chemicals.length} className="number-ticker font-medium text-slate-300" />
+                <span className="text-slate-500">chemicals</span>
               </span>
               <span className="text-slate-600">·</span>
-              <span>{reactions.length} reactions</span>
+              <span className="flex items-center gap-1">
+                <AnimatedCounter value={reactions.length} className="number-ticker font-medium text-slate-300" />
+                <span className="text-slate-500">reactions</span>
+              </span>
               <span className="text-slate-600">·</span>
               <span className="flex items-center gap-1">
                 <span className={cn("h-1.5 w-1.5 rounded-full", ppeCount >= 3 ? "bg-emerald-400" : "bg-yellow-400")} />
-                {ppeCount}/4 PPE
+                <AnimatedCounter value={ppeCount} className="number-ticker font-medium text-slate-300" />/4 PPE
               </span>
               <span className="text-slate-600">·</span>
-              <span>{totalVolume.toFixed(0)} mL total</span>
+              <span className="flex items-center gap-1">
+                <AnimatedCounter value={totalVolume} decimals={0} className="number-ticker font-medium text-cyan-300" />
+                <span className="text-slate-500">mL total</span>
+              </span>
             </div>
           </div>
         </div>
@@ -594,7 +604,7 @@ export default function Home() {
                   key={tab.id}
                   onClick={() => setLeftPanel(tab.id)}
                   className={cn(
-                    "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                    "tab-indicator flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
                     leftPanel === tab.id
                       ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm shadow-emerald-500/30"
                       : "text-slate-400 hover:bg-slate-800 hover:text-white"
@@ -606,9 +616,10 @@ export default function Home() {
               );
             })}
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div key={`left-${leftPanel}`} className="flex-1 overflow-hidden panel-fade">
             {leftPanel === "shelf" && <ChemicalShelf />}
             {leftPanel === "presets" && <PresetExperiments />}
+            {leftPanel === "reactions" && <ReactionLibrary />}
             {leftPanel === "periodic-table" && <PeriodicTable />}
             {leftPanel === "solubility" && <SolubilityRulesPanel />}
           </div>
@@ -746,7 +757,7 @@ export default function Home() {
                   key={tab.id}
                   onClick={() => setRightPanel(tab.id)}
                   className={cn(
-                    "relative flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
+                    "tab-indicator relative flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
                     rightPanel === tab.id
                       ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm shadow-emerald-500/30"
                       : "text-slate-400 hover:bg-slate-800 hover:text-white"
@@ -763,7 +774,7 @@ export default function Home() {
               );
             })}
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div key={`right-${rightPanel}`} className="flex-1 overflow-hidden panel-fade">
             {rightPanel === "instruments" && (
               <div className="h-full overflow-y-auto p-3">
                 <InstrumentPanel />

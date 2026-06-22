@@ -686,3 +686,201 @@ input[type="range"].flame-slider::-moz-range-thumb {
   100% { transform: translateX(0) rotate(0); opacity: 1; }
 }
 .achievement-toast { animation: achievement-toast 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* ===== Round 7 styling enhancements ===== */
+
+/* Molecule atom orbit ring (decorative) */
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.orbit-spin-slow { animation: orbit-spin 12s linear infinite; }
+.orbit-spin-rev { animation: orbit-spin 18s linear infinite reverse; }
+
+/* Glow border for the active molecule viewer */
+@keyframes viewer-glow {
+  0%, 100% { box-shadow: 0 0 24px -4px rgba(34, 197, 94, 0.2), inset 0 0 32px -8px rgba(34, 197, 94, 0.1); }
+  50% { box-shadow: 0 0 32px -4px rgba(34, 197, 94, 0.4), inset 0 0 48px -8px rgba(34, 197, 94, 0.2); }
+}
+.viewer-glow { animation: viewer-glow 4s ease-in-out infinite; }
+
+/* Element chip hover lift */
+.element-chip {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.element-chip:hover {
+  transform: translateY(-2px) scale(1.05);
+  filter: brightness(1.15);
+}
+
+/* Reaction card expanded state glow */
+.reaction-card-expanded {
+  box-shadow:
+    0 0 0 1px rgba(168, 85, 247, 0.3),
+    0 4px 16px -2px rgba(168, 85, 247, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Sparkline container subtle grid background */
+.sparkline-bg {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 20px 12px;
+}
+
+/* Premium stat card with animated gradient ring */
+.stat-card-premium {
+  position: relative;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.85) 100%);
+  overflow: hidden;
+}
+.stat-card-premium::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.8), rgba(6, 182, 212, 0.8), transparent);
+  animation: scan-line 3s ease-in-out infinite;
+}
+@keyframes scan-line {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Pill badge with shine */
+.pill-shine {
+  position: relative;
+  overflow: hidden;
+}
+.pill-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: skewX(-20deg);
+  animation: pill-sweep 4s ease-in-out infinite;
+}
+@keyframes pill-sweep {
+  0%, 100% { left: -150%; }
+  50% { left: 150%; }
+}
+
+/* Smooth content fade between panel switches */
+@keyframes panel-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.panel-fade { animation: panel-fade 0.25s ease-out; }
+
+/* Glass divider with gradient */
+.glass-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.3), rgba(34, 197, 94, 0.2), rgba(6, 182, 212, 0.3), transparent);
+}
+
+/* Selected beaker glow ring (DOM overlay hint) */
+@keyframes beaker-ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+}
+.beaker-ring { animation: beaker-ring-pulse 1.8s ease-in-out infinite; }
+
+/* Hot beaker warning shimmer */
+@keyframes hot-shimmer {
+  0%, 100% { background-color: rgba(239, 68, 68, 0.08); }
+  50% { background-color: rgba(239, 68, 68, 0.18); }
+}
+.hot-shimmer { animation: hot-shimmer 1s ease-in-out infinite; }
+
+/* Tab indicator slide */
+.tab-indicator {
+  position: relative;
+}
+.tab-indicator::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #34d399, #22d3ee);
+  border-radius: 2px;
+  transform: translateX(-50%);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tab-indicator:hover::after { width: 60%; }
+
+/* Empty state illustration container */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+.empty-state-icon {
+  position: relative;
+  margin-bottom: 1rem;
+}
+.empty-state-icon::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border: 2px dashed rgba(148, 163, 184, 0.3);
+  border-radius: 50%;
+  animation: rotate-slow 8s linear infinite;
+}
+@keyframes rotate-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Concentration badge with beaker icon */
+.concentration-badge {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(6, 182, 212, 0.15));
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+/* Hover glow for interactive 3D elements */
+.hover-glow-3d {
+  transition: filter 0.2s ease;
+}
+.hover-glow-3d:hover {
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.6));
+}
+
+/* Number ticker for stats */
+.number-ticker {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.3s ease;
+}
+
+/* Subtle scanline for "lab monitor" aesthetic */
+.scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.015) 2px,
+    rgba(255, 255, 255, 0.015) 4px
+  );
+}
+
+/* Reaction type color-coded left border */
+.border-l-acid-base { border-left: 3px solid #f43f5e; }
+.border-l-redox { border-left: 3px solid #f97316; }
+.border-l-precipitation { border-left: 3px solid #a855f7; }
+.border-l-synthesis { border-left: 3px solid #22c55e; }
+.border-l-decomposition { border-left: 3px solid #f59e0b; }
+.border-l-single-replacement { border-left: 3px solid #06b6d4; }
+.border-l-double-replacement { border-left: 3px solid #3b82f6; }
+.border-l-combustion { border-left: 3px solid #ef4444; }
+

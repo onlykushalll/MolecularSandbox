@@ -19,12 +19,14 @@ import {
   Droplets,
   Beaker as BeakerIcon,
   Zap,
+  Atom,
 } from "lucide-react";
 import { useLabStore } from "@/lib/store/lab-store";
 import { cn } from "@/lib/utils";
-import type { ChemicalCategory } from "@/lib/chemistry/types";
+import type { ChemicalCategory, ChemicalData } from "@/lib/chemistry/types";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { MoleculeModal } from "@/components/molecule/MoleculeModal";
 
 const categoryColors: Record<ChemicalCategory, string> = {
   reagent: "bg-slate-500",
@@ -63,6 +65,7 @@ export function ChemicalShelf() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [autoReact, setAutoReact] = useState(true);
+  const [viewingChemical, setViewingChemical] = useState<ChemicalData | null>(null);
 
   const filtered = useMemo(() => {
     return chemicals.filter((c) => {
@@ -174,8 +177,16 @@ export function ChemicalShelf() {
                       {categoryLabels[chem.category]}
                     </span>
                   </div>
-                  <div className="mt-0.5 text-xs text-slate-400">
-                    {chem.formula} · M={chem.molarMass}
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400">
+                    <button
+                      onClick={() => setViewingChemical(chem)}
+                      className="font-mono text-slate-300 transition-colors hover:text-emerald-300 hover:underline"
+                      title="View 3D molecule"
+                    >
+                      {chem.formula}
+                    </button>
+                    <span>·</span>
+                    <span>M={chem.molarMass}</span>
                   </div>
                   {chem.hazards.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -189,15 +200,26 @@ export function ChemicalShelf() {
                       ))}
                     </div>
                   )}
-                  <Button
-                    size="sm"
-                    onClick={() => handleAdd(chem.id)}
-                    disabled={!selectedContainerId}
-                    className="mt-2 h-7 w-full bg-emerald-600 text-xs hover:bg-emerald-500 disabled:opacity-40"
-                  >
-                    <Droplets className="mr-1 h-3 w-3" />
-                    Add to beaker
-                  </Button>
+                  <div className="mt-2 flex gap-1.5">
+                    <Button
+                      size="sm"
+                      onClick={() => handleAdd(chem.id)}
+                      disabled={!selectedContainerId}
+                      className="h-7 flex-1 bg-emerald-600 text-xs hover:bg-emerald-500 disabled:opacity-40"
+                    >
+                      <Droplets className="mr-1 h-3 w-3" />
+                      Add
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setViewingChemical(chem)}
+                      className="h-7 border-slate-600 bg-slate-800 text-xs text-slate-200 hover:bg-slate-700 hover:text-emerald-300"
+                      title="View 3D molecule"
+                    >
+                      <Atom className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -218,6 +240,12 @@ export function ChemicalShelf() {
           </div>
         </div>
       )}
+
+      <MoleculeModal
+        chemical={viewingChemical}
+        open={!!viewingChemical}
+        onOpenChange={(o) => !o && setViewingChemical(null)}
+      />
     </Card>
   );
 }

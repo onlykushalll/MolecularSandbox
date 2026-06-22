@@ -13,6 +13,7 @@ import { Beaker } from "./Beaker";
 import { LabBench } from "./LabBench";
 import { PourStream } from "./PourStream";
 import { BunsenBurner } from "./BunsenBurner";
+import { Thermometer3D } from "./Thermometer3D";
 import { useLabStore } from "@/lib/store/lab-store";
 
 function SceneContents() {
@@ -35,6 +36,7 @@ function SceneContents() {
         </group>
       ))}
       <PourStream />
+      <Thermometer3D position={[4.0, -0.6, -0.5]} />
     </>
   );
 }

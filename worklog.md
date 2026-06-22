@@ -830,3 +830,175 @@ bun run db:push      # Push schema changes to SQLite
 - **Welcome modal**: `src/app/page.tsx`
 - **Enhanced LabBench**: `src/components/lab/LabBench.tsx`
 - **Store update**: `src/lib/store/lab-store.ts` (setContainerType)
+
+---
+
+## Round 7 Updates (2025-06-23) — Cron Review #6
+
+### QA Findings (agent-browser)
+- ✅ Page loads HTTP 200 in ~40ms
+- ✅ 61 chemicals + 28 reactions load from API
+- ✅ 3D scene renders with beakers + thermometer
+- ✅ Beaker selection works (keyboard 1/2/3, click)
+- ✅ Add chemical → auto-react triggers correctly (NaOH + HCl → NaCl + H₂O, ΔT=+210°C, temp 25→117.9°C)
+- ✅ Temperature cap respected (liquid boiling points only)
+- ✅ Journal entries created with mechanism info
+- ✅ No runtime errors — only THREE.js deprecation warnings (PCFSoftShadowMap, Clock)
+- ✅ All right-panel tabs functional (Lab/Safety/AI/Save/Awards/Journal)
+- ✅ All left-panel tabs functional (Shelf/Presets/Rxns/Elements/Solubility)
+
+### New Features Built (4 major additions)
+
+#### 1. 3D Molecule Viewer Modal (`src/components/molecule/`)
+- **Files**: `MoleculeViewer3D.tsx`, `MoleculeModal.tsx`, `src/lib/chemistry/molecule.ts`
+- **Formula parser**: Tokenizes chemical formulas including parentheses (Ca(OH)2), hydrates (CuSO4·5H2O), and multi-letter elements (Na, Cl, Fe)
+- **3D layout engine**: Places atoms using molecular geometry rules:
+  - 2 atoms → linear
+  - 3 atoms → trigonal planar
+  - 4 atoms → tetrahedral
+  - 6 atoms → octahedral
+  - 5+ atoms → Fibonacci sphere distribution
+- **Central atom detection**: Priority C > Si > N > P > S > B > Be > O (organic chemistry convention)
+- **Bond order guessing**: C=O double, N≡N triple, S=O double, etc.
+- **CPK colors** + VDW radii for 50+ elements (H through Bi)
+- **Render modes**: Ball-and-Stick (default) + Space-Fill (VDW radius)
+- **Interactions**: Orbit controls (drag rotate, scroll zoom), auto-rotate toggle, hover to identify element
+- **Atom tooltips**: Hover any atom → shows element symbol + name + valence
+- **Composition grid**: Shows element breakdown (symbol × count + name)
+- **Physical properties**: Boiling/melting point, density, heat capacity cards
+- **Integration**: Click formula text OR Atom icon button on any chemical card in ChemicalShelf
+- **Verified**: HCl (2 atoms, 1 bond), H₂SO₄ (7 atoms, 6 bonds — 2H+1S+4O composition)
+
+#### 2. Reaction Library Panel (`src/components/ui-panels/ReactionLibrary.tsx`)
+- Browse all 28 reactions as searchable, filterable cards
+- **Search**: by name or equation
+- **Filter**: by reaction type (Acid-Base, Redox, Precipitation, Synthesis, etc.) with counts
+- **Color-coded left borders** per reaction type (red=acid-base, orange=redox, purple=precipitation, etc.)
+- **Expandable cards**: Click to reveal mechanism, observation, real-world uses, description
+- **Participants breakdown**: Shows reactants → products with coefficients and chemical colors
+- **"Try it" button**: Empties beaker, adds reactants, auto-triggers reaction
+- **"Load reactants" button**: Adds reactants without triggering (for manual experimentation)
+- **Type/ΔH badges**: Exothermic (red) vs Endothermic (blue), reversible (⇌) indicator
+- **Integration**: New "Rxns" tab in left panel (between Presets and Elements)
+
+#### 3. Live pH/Temperature Sparklines (`src/components/ui-panels/Sparkline.tsx`)
+- **`useHistory` hook**: Samples any value at 1s intervals, keeps last 60 samples
+- **`resetKey` parameter**: Resets buffer when selected beaker changes (no data contamination)
+- **`Sparkline` component**: Canvas-based line chart with:
+  - Smooth anti-aliased rendering (DPR-aware)
+  - Fill area under curve (20% alpha)
+  - Glowing endpoint dot with halo
+  - Auto-ranging or fixed min/max
+  - Optional axis labels and unit display
+  - "collecting data..." placeholder when <2 samples
+- **Integration in InstrumentPanel**: Two sparklines (Temperature orange + pH color-shifting)
+- **Live labels**: Current value displayed next to each sparkline
+
+#### 4. 3D Thermometer Prop (`src/components/lab/Thermometer3D.tsx`)
+- Real 3D lab thermometer mounted on a metal stand with base, pole, and clamps
+- **Glass tube**: meshPhysicalMaterial with transmission=0.9, IOR=1.5 (realistic glass)
+- **Mercury bulb + column**: Rises/falls with selected beaker's temperature (0-150°C range)
+- **Color-shifting mercury**: Blue (cold) → Green (25°C) → Orange (80°C) → Red (150°C)
+- **Emissive glow**: Mercury emits light when hot (>50°C), intensity scales with temp
+- **Smooth color lerp**: useFrame interpolates color changes (no jarring jumps)
+- **Tick marks**: 16 tick marks (every 10°C) with labels at 0°, 30°, 60°, 90°, 120°, 150°
+- **Billboarded label**: Always faces camera, shows current temp + beaker ID
+- **Integration**: Added to LabScene at position [4.0, -0.6, -0.5] (right side of bench)
+- **Verified**: Temperature rose 25→37.5°C when heating water beaker; mercury column + color updated
+
+### Styling Enhancements (Round 7)
+
+#### New CSS Utilities (`src/app/globals.css` +150 lines)
+- **`.viewer-glow`** — Pulsing emerald glow on Molecule Viewer container
+- **`.reaction-card-expanded`** — Purple glow ring on expanded reaction cards
+- **`.sparkline-bg`** — Subtle grid background for chart containers
+- **`.stat-card-premium`** — Animated scan-line across top of stat cards
+- **`.pill-shine`** — Sweeping shine effect on pill badges
+- **`.panel-fade`** — Smooth fade+slide animation between panel switches
+- **`.glass-divider`** — Gradient divider line (transparent → emerald → cyan → transparent)
+- **`.beaker-ring`** — Pulsing ring for selected beaker hints
+- **`.hot-shimmer`** — Red shimmer for hot beaker warnings
+- **`.tab-indicator`** — Animated underline on tab hover
+- **`.empty-state`** + `.empty-state-icon` — Centered empty state with rotating dashed ring
+- **`.border-l-{reaction-type}`** — 8 color-coded left-border classes for reaction cards
+- **`.scanlines`** — Subtle CRT scanline overlay for lab-monitor aesthetic
+- **`.number-ticker`** — Tabular-nums for stable numeric display
+- **`.orbit-spin-slow`** / **`.orbit-spin-rev`** — Decorative orbit ring animations
+
+#### AnimatedCounter Component (`src/components/ui-panels/AnimatedCounter.tsx`)
+- Smoothly animates numbers using requestAnimationFrame with ease-out cubic
+- Used in header stats: chemicals count, reactions count, PPE count, total volume
+- Configurable duration, decimals, prefix, suffix
+- Tabular-nums for stable width during animation
+
+#### Tab polish
+- `.tab-indicator` class on all left/right panel tabs — animated underline on hover
+- `.panel-fade` key-based remount on panel switch — smooth fade+slide transition
+- `.hover-lift` on reaction cards — subtle translateY on hover
+
+### Architecture Updates
+```
+src/
+├── app/
+│   ├── globals.css               # +150 lines (Round 7 styling)
+│   └── page.tsx                  # +ReactionLibrary tab, +AnimatedCounter, +panel-fade
+├── components/
+│   ├── lab/
+│   │   ├── LabScene.tsx          # +Thermometer3D
+│   │   └── Thermometer3D.tsx     # NEW — 3D thermometer with mercury column
+│   ├── molecule/                 # NEW DIRECTORY
+│   │   ├── MoleculeViewer3D.tsx  # NEW — 3D ball-and-stick renderer
+│   │   └── MoleculeModal.tsx     # NEW — modal wrapper with chemical details
+│   └── ui-panels/
+│       ├── ReactionLibrary.tsx   # NEW — browse all 28 reactions
+│       ├── Sparkline.tsx         # NEW — useHistory hook + Sparkline canvas
+│       ├── AnimatedCounter.tsx   # NEW — smooth number animation
+│       ├── ChemicalShelf.tsx     # +View 3D molecule buttons, +MoleculeModal
+│       └── InstrumentPanel.tsx   # +Live Trends sparklines (temp + pH)
+└── lib/
+    └── chemistry/
+        └── molecule.ts           # NEW — formula parser + 3D atom layout engine
+```
+
+### Verification Results
+- ✅ Lint passes clean (`bun run lint` — 0 errors, 0 warnings)
+- ✅ Page loads HTTP 200, no runtime errors
+- ✅ Molecule Viewer: HCl (2 atoms, 1 bond) ✓, H₂SO₄ (7 atoms, 6 bonds, H+S+O composition) ✓
+- ✅ Reaction Library: 28 reactions listed, search/filter works, Try-it triggers reaction ✓
+- ✅ Sparklines: rendering with "collecting data..." → live data over time ✓
+- ✅ 3D Thermometer: renders with stand, mercury rises 25→37.5°C when heating ✓
+- ✅ AnimatedCounter: 4 counters in header (61 chemicals, 28 reactions, 3/4 PPE, 0 mL) ✓
+- ✅ Comprehensive E2E test: select beaker → Reaction Library → Try Neutralization → Lab tab shows 110.2°C Hot + sparklines ✓
+- ✅ All panel transitions use panel-fade animation
+- ✅ Tab-indicator hover effect on all 11 panel tabs
+
+### Screenshots Saved
+- `qa-r7-initial.png` — initial load
+- `qa-r7-beaker1-selected.png` — beaker 1 selected
+- `qa-r7-after-reaction.png` — after HCl+NaOH reaction
+- `qa-r7-neutralization.png` — neutralization products
+- `qa-r7-molecule-viewer.png` — HCl 3D molecule modal
+- `qa-r7-molecule-h2so4.png` — H₂SO₄ 3D molecule (7 atoms)
+- `qa-r7-reactions-library.png` — Reaction Library tab
+- `qa-r7-reaction-expanded.png` — expanded reaction card with mechanism
+- `qa-r7-reaction-tried.png` — after Try-it reaction
+- `qa-r7-thermometer.png` — 3D thermometer at 25°C
+- `qa-r7-thermometer-heated.png` — thermometer after heating
+- `qa-r7-thermometer-rising.png` — thermometer at 37.5°C (mercury rising)
+- `qa-r7-sparklines.png` — Live Trends sparklines in Instrument Panel
+- `qa-r7-final-home.png` — final home with animated counters
+- `qa-r7-final-flow.png` — final E2E flow (110.2°C Hot after neutralization)
+
+### Known Issues
+1. **AI Assistant network timeout** — ZAI API may timeout in sandbox (pre-existing, error handling works)
+2. **agent-browser ref-based click quirk** — Some `click "@ref"` commands don't register on buttons inside ScrollArea; JS `.click()` works as workaround (QA-only issue, not an app bug)
+3. **THREE.js deprecation warnings** — `PCFSoftShadowMap` and `Clock` deprecation messages from R3F/drei (cosmetic, library-level)
+
+### Next Steps (Priority Order)
+- [ ] Molecule Viewer: Add preset geometries for common polyatomic ions (SO₄²⁻, NO₃⁻, NH₄⁺) for more accurate shapes
+- [ ] Reaction Library: "Compare" mode to view two reactions side-by-side
+- [ ] Sparkline: Add touch support + pinch-zoom on the time axis
+- [ ] Thermometer: Add min/max memory markers (like a real lab thermometer)
+- [ ] Add Lewis structure viewer alongside the 3D ball-and-stick
+- [ ] Titration curve simulator when acid + base are in the same beaker
+- [ ] Concentration calculator (molarity from moles/volume) in Instrument Panel
