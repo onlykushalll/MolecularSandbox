@@ -22,6 +22,7 @@ import {
   FlaskRound,
   TestTubes,
   Beaker as BeakerIcon,
+  Sun,
 } from "lucide-react";
 import type { ContainerType } from "@/lib/chemistry/types";
 import { useLabStore } from "@/lib/store/lab-store";
@@ -46,6 +47,8 @@ export function InstrumentPanel() {
   const reactionProgress = useLabStore((s) => s.reactionProgress);
   const reactingContainerId = useLabStore((s) => s.reactingContainerId);
   const setContainerType = useLabStore((s) => s.setContainerType);
+  const flameIntensity = useLabStore((s) => s.flameIntensity);
+  const setFlameIntensity = useLabStore((s) => s.setFlameIntensity);
 
   const selected = containers.find((c) => c.id === selectedContainerId);
   const secondary = containers.find((c) => c.id === secondaryContainerId);
@@ -440,6 +443,49 @@ export function InstrumentPanel() {
               <ArrowRightLeft className="mr-1 h-3 w-3" />
               Pour from {selected.id.toUpperCase()} to {secondary.id.toUpperCase()}
             </Button>
+            <p className="mt-1.5 text-[9px] text-slate-500">
+              💧 Variable pour rate via Torricelli&apos;s theorem — fuller beakers pour faster.
+            </p>
+          </div>
+        )}
+
+        {/* Flame intensity slider — only shown when heating or could heat */}
+        {!selected.isBroken && (
+          <div className="rounded-lg border border-orange-500/30 bg-gradient-to-br from-orange-950/20 to-slate-900/40 p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <Flame className="h-4 w-4 text-orange-400" />
+              <span className="text-xs font-medium text-orange-300">Bunsen Flame</span>
+              <span className="ml-auto text-[10px] font-mono text-orange-300">
+                {["Off", "Low", "Medium", "High"][flameIntensity]}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Sun className="h-3 w-3 text-slate-500" />
+              <input
+                type="range"
+                min={0}
+                max={3}
+                step={1}
+                value={flameIntensity}
+                onChange={(e) => setFlameIntensity(Number(e.target.value))}
+                className="flame-slider flex-1 cursor-pointer appearance-none rounded-full"
+                style={{
+                  background: `linear-gradient(90deg, #f97316 0%, #f97316 ${(flameIntensity / 3) * 100}%, #334155 ${(flameIntensity / 3) * 100}%, #334155 100%)`,
+                }}
+              />
+              <Flame className="h-3 w-3 text-orange-400" />
+            </div>
+            <div className="mt-1 flex justify-between text-[8px] text-slate-500">
+              <span>Off</span>
+              <span>Low</span>
+              <span>Medium</span>
+              <span>High</span>
+            </div>
+            {selected.isHeating && (
+              <p className="mt-1 text-[9px] text-orange-300/80">
+                🔥 Heating rate scales with flame intensity
+              </p>
+            )}
           </div>
         )}
 

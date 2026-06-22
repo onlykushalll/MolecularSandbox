@@ -10,6 +10,7 @@ import { AIAssistant } from "@/components/ui-panels/AIAssistant";
 import { SaveLoadPanel } from "@/components/ui-panels/SaveLoadPanel";
 import { PeriodicTable } from "@/components/ui-panels/PeriodicTable";
 import { SolubilityRulesPanel } from "@/components/ui-panels/SolubilityRules";
+import { AchievementsPanel } from "@/components/ui-panels/AchievementsPanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,6 +28,7 @@ import {
   Volume2,
   VolumeX,
   Zap,
+  Trophy,
 } from "lucide-react";
 import { useLabStore } from "@/lib/store/lab-store";
 import type { ChemicalData, ReactionData, ContainerState } from "@/lib/chemistry/types";
@@ -65,7 +67,7 @@ const LabScene = dynamic(
 );
 
 type LeftPanel = "shelf" | "presets" | "periodic-table" | "solubility";
-type RightPanel = "instruments" | "safety" | "assistant" | "journal" | "saves";
+type RightPanel = "instruments" | "safety" | "assistant" | "journal" | "saves" | "achievements";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -74,6 +76,7 @@ export default function Home() {
   const [leftPanel, setLeftPanel] = useState<LeftPanel>("shelf");
   const [rightPanel, setRightPanel] = useState<RightPanel>("instruments");
   const [showWelcome, setShowWelcome] = useState(false);
+  const [sessionTime, setSessionTime] = useState(0);
   const prevReactionRef = useRef<unknown>(null);
 
   const initializeLab = useLabStore((s) => s.initializeLab);
@@ -106,6 +109,14 @@ export default function Home() {
     }, 500);
     return () => clearInterval(interval);
   }, [heatingTick]);
+
+  // Session timer — counts up every second while app is loaded
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSessionTime((t) => t + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Reaction progress decay — animate the reaction ring down to 0 over ~1.2s
   useEffect(() => {
@@ -234,6 +245,25 @@ export default function Home() {
       });
     }
   }, [lastReactionResult]);
+
+  // Achievement unlock listener — listens for custom events from the lab-store
+  // and displays toast notifications for each newly unlocked achievement.
+  useEffect(() => {
+    const handler = () => {
+      const queue = (window as unknown as { __achievementQueue?: Array<{ id: string; title: string; description: string; icon: string }> }).__achievementQueue;
+      if (!queue || queue.length === 0) return;
+      for (const a of queue.splice(0, queue.length)) {
+        toast.success(`🏆 ${a.title}`, {
+          description: a.description,
+          duration: 5000,
+        });
+      }
+      // Auto-switch to achievements tab on first unlock
+      setRightPanel("achievements");
+    };
+    window.addEventListener("achievements-unlocked", handler);
+    return () => window.removeEventListener("achievements-unlocked", handler);
+  }, []);
 
   // Load data on mount
   useEffect(() => {
@@ -369,6 +399,7 @@ export default function Home() {
     { id: "safety", label: "Safety", icon: Shield, badge: dangerCount || undefined },
     { id: "assistant", label: "AI", icon: Bot },
     { id: "saves", label: "Save", icon: Save },
+    { id: "achievements", label: "Awards", icon: Trophy },
     { id: "journal", label: "Journal", icon: BookOpen },
   ];
 
@@ -663,6 +694,45 @@ export default function Home() {
               )}
             </div>
           )}
+
+          {/* Quick Stats floating widget — bottom-right of 3D scene */}
+          <div className="pointer-events-none absolute bottom-4 right-4">
+            <div className="glass-premium rounded-lg p-2.5 shadow-xl">
+              <div className="mb-1.5 flex items-center gap-1.5 border-b border-slate-700/50 pb-1.5">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 timer-pulse" />
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                  Session
+                </span>
+                <span className="ml-auto font-mono text-[11px] font-bold text-emerald-300">
+                  {Math.floor(sessionTime / 60)}:{String(sessionTime % 60).padStart(2, "0")}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="stat-tile-pop">
+                  <div className="text-sm font-bold text-emerald-400">{containers.length}</div>
+                  <div className="text-[7px] uppercase text-slate-500">Beakers</div>
+                </div>
+                <div className="stat-tile-pop">
+                  <div className="text-sm font-bold text-cyan-400">{totalContents}</div>
+                  <div className="text-[7px] uppercase text-slate-500">Items</div>
+                </div>
+                <div className="stat-tile-pop">
+                  <div className="text-sm font-bold text-purple-400">{totalVolume.toFixed(0)}</div>
+                  <div className="text-[7px] uppercase text-slate-500">mL</div>
+                </div>
+              </div>
+              {(dangerCount > 0 || warningCount > 0) && (
+                <div className="mt-1.5 border-t border-slate-700/50 pt-1.5 text-center">
+                  <span className={cn(
+                    "text-[9px] font-medium",
+                    dangerCount > 0 ? "text-red-300" : "text-amber-300"
+                  )}>
+                    {dangerCount > 0 ? `⚠ ${dangerCount} danger alert${dangerCount > 1 ? "s" : ""}` : `⚠ ${warningCount} warning${warningCount > 1 ? "s" : ""}`}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         </main>
 
         {/* Right panel — Instruments / Safety / AI / Saves / Journal */}
@@ -708,6 +778,11 @@ export default function Home() {
             {rightPanel === "saves" && (
               <div className="h-full p-3">
                 <SaveLoadPanel />
+              </div>
+            )}
+            {rightPanel === "achievements" && (
+              <div className="h-full p-3">
+                <AchievementsPanel />
               </div>
             )}
             {rightPanel === "journal" && (

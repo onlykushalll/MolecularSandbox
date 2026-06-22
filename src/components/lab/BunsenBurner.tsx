@@ -2,6 +2,7 @@
 import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { useLabStore } from "@/lib/store/lab-store";
 
 interface BunsenBurnerProps {
   position: [number, number, number];
@@ -14,6 +15,8 @@ export function BunsenBurner({ position, active }: BunsenBurnerProps) {
   const innerFlameRef = useRef<THREE.Mesh>(null);
   const lightRef = useRef<THREE.PointLight>(null);
   const time = useRef(0);
+  // Flame intensity 0..3 (off / low / medium / high) — affects visual size & light
+  const flameIntensity = useLabStore((s) => s.flameIntensity);
 
   const flameParticles = useMemo(() => {
     return Array.from({ length: 12 }).map((_, i) => ({
@@ -25,22 +28,35 @@ export function BunsenBurner({ position, active }: BunsenBurnerProps) {
     }));
   }, []);
 
+  // Size multiplier based on flame intensity (1=low, 2=medium, 3=high)
+  const sizeMult =
+    flameIntensity === 0 ? 0.4
+    : flameIntensity === 1 ? 0.7
+    : flameIntensity === 2 ? 1.0
+    : 1.35;
+  // Light intensity scales with flame size
+  const lightMult =
+    flameIntensity === 0 ? 0
+    : flameIntensity === 1 ? 0.6
+    : flameIntensity === 2 ? 1.0
+    : 1.5;
+
   useFrame((_, delta) => {
     time.current += delta;
     const t = time.current;
 
     if (flameRef.current) {
-      const scale = active ? 1 + Math.sin(t * 8) * 0.08 : 0.001;
+      const scale = active ? sizeMult * (1 + Math.sin(t * 8) * 0.08) : 0.001;
       flameRef.current.scale.set(scale * 0.9, scale, scale * 0.9);
       flameRef.current.rotation.y = t * 0.5;
     }
     if (innerFlameRef.current) {
-      const scale = active ? 0.7 + Math.sin(t * 10 + 1) * 0.06 : 0.001;
+      const scale = active ? sizeMult * (0.7 + Math.sin(t * 10 + 1) * 0.06) : 0.001;
       innerFlameRef.current.scale.set(scale, scale * 1.1, scale);
     }
     if (lightRef.current) {
       lightRef.current.intensity = active
-        ? 1.5 + Math.sin(t * 15) * 0.3 + Math.sin(t * 23) * 0.2
+        ? lightMult * (1.5 + Math.sin(t * 15) * 0.3 + Math.sin(t * 23) * 0.2)
         : 0;
     }
     if (flameGroupRef.current && active) {
@@ -49,11 +65,11 @@ export function BunsenBurner({ position, active }: BunsenBurnerProps) {
           const data = flameParticles[i];
           const mesh = child as THREE.Mesh;
           const cycle = (t * data.speed + data.phase) % 1;
-          mesh.position.y = 0.05 + cycle * 0.25;
+          mesh.position.y = 0.05 + cycle * 0.25 * sizeMult;
           const r = data.radius * (1 - cycle * 0.3);
           mesh.position.x = Math.cos(data.angle) * r;
           mesh.position.z = Math.sin(data.angle) * r;
-          mesh.scale.setScalar((1 - cycle) * 0.8);
+          mesh.scale.setScalar((1 - cycle) * 0.8 * sizeMult);
           const mat = mesh.material as THREE.MeshBasicMaterial;
           mat.opacity = (1 - cycle) * 0.7;
         }

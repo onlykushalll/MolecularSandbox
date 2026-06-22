@@ -117,6 +117,13 @@ export interface ReactionData {
   description: string;
   reactants: ReactionParticipant[];
   products: ReactionParticipant[];
+  // Optional mechanism explanation — what's happening at the molecular level.
+  // If absent, a default message based on reactionType is shown.
+  mechanism?: string;
+  // Optional real-world application / use case
+  realWorldUse?: string;
+  // Optional observation note (what to look for)
+  observation?: string;
 }
 
 export interface ReactionResult {
@@ -165,4 +172,12 @@ export interface JournalEntry {
   reaction?: string;
   equation?: string;
   temperatureChange?: number;
+  // Mechanism explanation (educational)
+  mechanism?: string;
+  // Real-world application note
+  realWorldUse?: string;
+  // What to observe in the 3D scene
+  observation?: string;
+  // Reaction type (for color-coded badges in journal)
+  reactionType?: string;
 }

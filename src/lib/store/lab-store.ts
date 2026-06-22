@@ -11,7 +11,53 @@ import type {
 } from "@/lib/chemistry/types";
 import { volumeToMoles, molesToVolume } from "@/lib/chemistry/mixture";
 import { checkSolubility, getPrecipitateColor } from "@/lib/chemistry/solubility";
+import { getMechanismInfo } from "@/lib/chemistry/mechanisms";
 import { getSoundManager } from "@/lib/sound/sound-manager";
+import {
+  recordAchievementEvent,
+  getAchievementState,
+} from "@/components/ui-panels/AchievementsPanel";
+import type { ReactionResult as _RR } from "@/lib/chemistry/types";
+
+// Helper: bump achievement counters after a reaction, then check for new unlocks.
+function trackReactionForAchievements(result: _RR) {
+  const ach = getAchievementState();
+  ach.totalReactions += 1;
+  ach.uniqueReactionsTried.add(result.reaction.id);
+  // Track all chemicals involved (reactants + products)
+  for (const r of result.reactantsConsumed) {
+    ach.uniqueChemicalsUsed.add(r.chemicalId);
+  }
+  for (const p of result.productsProduced) {
+    ach.uniqueChemicalsUsed.add(p.chemicalId);
+  }
+  if (result.temperatureChange > 20) {
+    ach.exothermicReactions += 1;
+  }
+  if (result.temperatureChange < 0) {
+    ach.endothermicReactions += 1;
+  }
+  if (result.precipitateFormed) {
+    ach.totalPrecipitatesFormed += 1;
+  }
+  if (result.gasEvolved) {
+    ach.totalGasesEvolved += 1;
+  }
+  // Check what's unlocked
+  const newlyUnlocked = recordAchievementEvent({
+    reactionType: result.reaction.reactionType,
+  });
+  // Notify via toast (will be picked up by the page-level effect that listens
+  // for new achievements — but we can't import toast here without circular dep).
+  // We stash the newly unlocked list on window so the page can pick it up.
+  if (typeof window !== "undefined" && newlyUnlocked.length > 0) {
+    const queue = (window as unknown as { __achievementQueue?: typeof newlyUnlocked }).__achievementQueue || [];
+    queue.push(...newlyUnlocked);
+    (window as unknown as { __achievementQueue?: typeof newlyUnlocked }).__achievementQueue = queue;
+    // Dispatch a custom event the page can listen for
+    window.dispatchEvent(new CustomEvent("achievements-unlocked"));
+  }
+}
 
 interface PPEState {
   goggles: boolean;
@@ -67,6 +113,14 @@ interface LabStore {
   // Audio
   soundEnabled: boolean;
 
+  // Bunsen burner flame intensity (0..3) — affects heating rate & visual size
+  flameIntensity: number;
+
+  // Container types that have ever been used (for achievement tracking)
+  containerTypesUsed: Set<string>;
+  // Has user used the pH strip yet?
+  hasUsedPHStrip: boolean;
+
   // Glass breaking — tracks the moment a beaker breaks (for VFX)
   lastBrokenAt: number | null;
   lastBrokenContainerId: string | null;
@@ -91,6 +145,9 @@ interface LabStore {
   selectContainer: (id: string | null, additive?: boolean) => void;
   setHoveredContainer: (id: string | null) => void;
   setContainerType: (id: string, containerType: import("@/lib/chemistry/types").ContainerType) => void;
+
+  // Actions — flame intensity
+  setFlameIntensity: (intensity: number) => void;
 
   // Actions — chemicals
   selectChemical: (id: string | null) => void;
@@ -140,12 +197,19 @@ interface LabStore {
     text: string,
     reaction?: string,
     equation?: string,
-    temperatureChange?: number
+    temperatureChange?: number,
+    mechanism?: string,
+    realWorldUse?: string,
+    observation?: string,
+    reactionType?: string
   ) => void;
   clearJournal: () => void;
 
   // Actions — drag
   setDragging: (isDragging: boolean, chemicalId?: string | null) => void;
+
+  // Actions — achievements bridge
+  markPresetComplete: (presetId: string) => void;
 
   // Reset
   resetLab: () => void;
@@ -237,6 +301,9 @@ export const useLabStore = create<LabStore>((set, get) => ({
 
   showPHStrip: false,
   soundEnabled: true,
+  flameIntensity: 2, // default medium flame
+  containerTypesUsed: new Set<string>(["beaker"]), // beaker is the default type
+  hasUsedPHStrip: false,
   lastBrokenAt: null,
   lastBrokenContainerId: null,
 
@@ -285,12 +352,28 @@ export const useLabStore = create<LabStore>((set, get) => ({
     }),
   setHoveredContainer: (id) => set({ hoveredContainerId: id }),
 
-  setContainerType: (id, containerType) =>
-    set((state) => ({
-      containers: state.containers.map((c) =>
-        c.id === id ? { ...c, type: containerType } : c
-      ),
-    })),
+  setContainerType: (id, containerType) => {
+    set((state) => {
+      const newSet = new Set(state.containerTypesUsed);
+      newSet.add(containerType);
+      return {
+        containers: state.containers.map((c) =>
+          c.id === id ? { ...c, type: containerType } : c
+        ),
+        containerTypesUsed: newSet,
+      };
+    });
+    // Check container-type mastery achievement
+    const used = get().containerTypesUsed;
+    recordAchievementEvent({
+      containerTypesUsed: Array.from(used),
+    });
+  },
+
+  setFlameIntensity: (intensity) => {
+    const clamped = Math.max(0, Math.min(3, intensity));
+    set({ flameIntensity: clamped });
+  },
 
   selectChemical: (id) => set({ selectedChemicalId: id }),
   setDragVolume: (volume) => set({ dragVolume: volume }),
@@ -313,7 +396,13 @@ export const useLabStore = create<LabStore>((set, get) => ({
     if (!source || !target) return;
 
     const totalSourceVolume = source.contents.reduce((s, c) => s + c.volume, 0);
-    const transferVolume = Math.min(30, totalSourceVolume);
+    // Torricelli's theorem: v = √(2gh), where h is the liquid height.
+    // For a beaker/cylinder, h ∝ V / (π·r²). The flow rate ∝ √h.
+    // We approximate: transfer fraction = baseFraction × √(height factor)
+    // Use a fixed-volume drop (30 mL base, scaled by √(volume/capacity)) so a fuller
+    // beaker pours faster (higher head pressure), an emptier beaker pours slower.
+    const headFactor = Math.sqrt(Math.max(0.05, totalSourceVolume / Math.max(1, source.capacity)));
+    const transferVolume = Math.min(30 * headFactor, totalSourceVolume);
     if (transferVolume <= 0) {
       set({ isPouring: false, pourSourceId: null, pourTargetId: null, pourProgress: 0 });
       return;
@@ -381,11 +470,16 @@ export const useLabStore = create<LabStore>((set, get) => ({
     if (totalSourceVolume <= 0) return;
     // Play pour sound
     if (get().soundEnabled) getSoundManager().play("pour");
-    // Torricelli's theorem: v = √(2gh) → flow rate proportional to √height
-    // Use a 2-second animation for visual clarity
+    // Torricelli's theorem: v = √(2gh) → flow rate ∝ √height
+    // Animation duration varies with head pressure: a fuller beaker pours faster
+    // (so the 30mL×√head transfer completes in less time).
+    const headFactor = Math.sqrt(
+      Math.max(0.1, totalSourceVolume / Math.max(1, source.capacity))
+    );
+    // Base 2s, but speed up by up to 2× for very full beakers
+    const duration = Math.max(900, 2000 / headFactor);
     get().startPour(sourceId, targetId);
     const startTime = Date.now();
-    const duration = 2000;
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(1, elapsed / duration);
@@ -393,6 +487,8 @@ export const useLabStore = create<LabStore>((set, get) => ({
       if (progress >= 1) {
         clearInterval(interval);
         get().completePour();
+        // Achievement: poured between beakers
+        recordAchievementEvent({ justPoured: true });
       }
     }, 50);
   },
@@ -430,6 +526,9 @@ export const useLabStore = create<LabStore>((set, get) => ({
         c.id === containerId ? { ...c, contents: newContents } : c
       ),
     });
+
+    // Track chemicals used for achievements
+    recordAchievementEvent({}); // refreshes derived stats if needed
 
     // Check for safety alerts
     const hazards = chem.hazards;
@@ -533,12 +632,23 @@ export const useLabStore = create<LabStore>((set, get) => ({
         return 100; // non-liquids default to water-like
       });
       const maxBP = Math.max(...liquidBoilingPoints, 100);
-      // Heat up — rate depends on volume (smaller heats faster)
+      // Heat up — rate depends on volume (smaller heats faster) AND flame intensity
+      // flameIntensity: 0=off, 1=low, 2=medium, 3=high
+      const flameMult = state.flameIntensity === 0 ? 0
+        : state.flameIntensity === 1 ? 0.5
+        : state.flameIntensity === 2 ? 1.0
+        : 1.6;
       const totalVolume = c.contents.reduce((s, cc) => s + cc.volume, 0);
-      const heatRate = Math.max(0.5, 3 - totalVolume / 100);
+      const heatRate = Math.max(0.5, 3 - totalVolume / 100) * flameMult;
       const prevTemp = c.temperature;
       const newTemp = Math.min(c.temperature + heatRate, maxBP + 5);
       if (newTemp !== c.temperature) changed = true;
+
+      // Track achievement: heated to boiling
+      if (newTemp >= maxBP - 1 && maxBP > 50) {
+        // Will be picked up by achievement checker after tick
+        setTimeout(() => recordAchievementEvent({ justHeatedToBoiling: true }), 0);
+      }
 
       // Thermal shock detection — rapid temperature rise > 60°C in one tick
       // (heatingTick runs every 500ms, so this is a very fast spike)
@@ -596,6 +706,8 @@ export const useLabStore = create<LabStore>((set, get) => ({
         severity: "danger",
       });
       set({ lastBrokenAt: Date.now(), lastBrokenContainerId: brokenContainerId });
+      // Achievement tracking: broke a beaker
+      recordAchievementEvent({ justBrokeBeaker: true });
     }
   },
 
@@ -736,12 +848,25 @@ export const useLabStore = create<LabStore>((set, get) => ({
       });
     }
 
+    // Build educational mechanism info for the journal
+    const mechInfo = getMechanismInfo(result.reaction.reactionType, {
+      mechanism: result.reaction.mechanism,
+      observation: result.reaction.observation,
+      realWorldUse: result.reaction.realWorldUse,
+    });
     get().addJournalEntry(
       `${result.reaction.name}: ${result.molesReacted.toFixed(4)} mol reacted`,
       result.reaction.name,
       result.reaction.equation,
-      result.temperatureChange
+      result.temperatureChange,
+      mechInfo.mechanism,
+      mechInfo.realWorldUse,
+      mechInfo.observation,
+      result.reaction.reactionType
     );
+
+    // Achievement tracking: record the reaction
+    trackReactionForAchievements(result);
   },
 
   setReactionProgress: (progress) =>
@@ -857,10 +982,14 @@ export const useLabStore = create<LabStore>((set, get) => ({
     get().processReaction(containerId, result);
   },
 
-  togglePPE: (type) =>
+  togglePPE: (type) => {
     set((state) => ({
       ppeWorn: { ...state.ppeWorn, [type]: !state.ppeWorn[type] },
-    })),
+    }));
+    // Achievement: equip all PPE
+    const ppe = get().ppeWorn;
+    recordAchievementEvent({ ppeWorn: ppe });
+  },
 
   addSafetyAlert: (alert) =>
     set((state) => ({
@@ -883,7 +1012,11 @@ export const useLabStore = create<LabStore>((set, get) => ({
   toggleSafetyPanel: () =>
     set((state) => ({ showSafetyPanel: !state.showSafetyPanel })),
   setCameraTarget: (target) => set({ cameraTarget: target }),
-  togglePHStrip: () => set((state) => ({ showPHStrip: !state.showPHStrip })),
+  togglePHStrip: () => {
+    set((state) => ({ showPHStrip: !state.showPHStrip, hasUsedPHStrip: true }));
+    // Achievement: used pH strip
+    recordAchievementEvent({ justUsedPHStrip: true });
+  },
   toggleSound: () => {
     const next = !get().soundEnabled;
     set({ soundEnabled: next });
@@ -900,7 +1033,7 @@ export const useLabStore = create<LabStore>((set, get) => ({
     sm.setMuted(!enabled);
   },
 
-  addJournalEntry: (text, reaction, equation, temperatureChange) =>
+  addJournalEntry: (text, reaction, equation, temperatureChange, mechanism, realWorldUse, observation, reactionType) =>
     set((state) => ({
       journalEntries: [
         {
@@ -910,6 +1043,10 @@ export const useLabStore = create<LabStore>((set, get) => ({
           reaction,
           equation,
           temperatureChange,
+          mechanism,
+          realWorldUse,
+          observation,
+          reactionType,
         },
         ...state.journalEntries,
       ].slice(0, 50),
@@ -919,6 +1056,12 @@ export const useLabStore = create<LabStore>((set, get) => ({
 
   setDragging: (isDragging, chemicalId = null) =>
     set({ isDragging, draggedChemicalId: chemicalId }),
+
+  markPresetComplete: (presetId) => {
+    const ach = getAchievementState();
+    ach.presetExperimentsCompleted.add(presetId);
+    recordAchievementEvent({ presetId });
+  },
 
   resetLab: () => {
     // Stop ambient sounds
