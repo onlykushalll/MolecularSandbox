@@ -411,8 +411,9 @@ export const useLabStore = create<LabStore>((set, get) => ({
     const newSourceContents: ContainerContent[] = [];
     const newTargetContents = [...target.contents];
 
+    const ratio = totalSourceVolume > 0 ? transferVolume / totalSourceVolume : 0;
+
     for (const content of source.contents) {
-      const ratio = totalSourceVolume > 0 ? transferVolume / totalSourceVolume : 0;
       const transferredVolume = content.volume * ratio;
       const transferredMoles = content.moles * ratio;
       const remainingVolume = content.volume - transferredVolume;
@@ -441,10 +442,42 @@ export const useLabStore = create<LabStore>((set, get) => ({
       }
     }
 
+    // Transfer precipitate proportionally
+    let newSourcePrecipitate = source.precipitate ? [...source.precipitate] : null;
+    let newTargetPrecipitate = target.precipitate ? [...target.precipitate] : null;
+
+    if (source.precipitate && ratio > 0) {
+      newSourcePrecipitate = [];
+      if (!newTargetPrecipitate) newTargetPrecipitate = [];
+
+      for (const p of source.precipitate) {
+        const transferredMoles = p.moles * ratio;
+        const remainingMoles = p.moles - transferredMoles;
+
+        if (remainingMoles > 0.001) {
+          newSourcePrecipitate.push({
+            ...p,
+            moles: remainingMoles,
+          });
+        }
+
+        const existing = newTargetPrecipitate.find((ep) => ep.chemicalId === p.chemicalId);
+        if (existing) {
+          existing.moles += transferredMoles;
+        } else {
+          newTargetPrecipitate.push({
+            ...p,
+            moles: transferredMoles,
+          });
+        }
+      }
+      if (newSourcePrecipitate.length === 0) newSourcePrecipitate = null;
+    }
+
     set({
       containers: state.containers.map((c) => {
-        if (c.id === source.id) return { ...c, contents: newSourceContents };
-        if (c.id === target.id) return { ...c, contents: newTargetContents };
+        if (c.id === source.id) return { ...c, contents: newSourceContents, precipitate: newSourcePrecipitate };
+        if (c.id === target.id) return { ...c, contents: newTargetContents, precipitate: newTargetPrecipitate };
         return c;
       }),
       isPouring: false,

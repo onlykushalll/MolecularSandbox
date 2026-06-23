@@ -46,11 +46,11 @@ export async function POST(request: Request) {
 
     let labState;
     if (existing) {
-      // Replace containers
-      await db.labContainerState.deleteMany({ where: { labStateId: existing.id } });
-      for (const c of containers) {
-        await db.labContainerState.create({
-          data: {
+      labState = await db.$transaction(async (tx) => {
+        // Replace containers atomically in transaction
+        await tx.labContainerState.deleteMany({ where: { labStateId: existing.id } });
+        await tx.labContainerState.createMany({
+          data: containers.map((c) => ({
             labStateId: existing.id,
             containerId: c.id,
             type: c.type || "beaker",
@@ -66,13 +66,13 @@ export async function POST(request: Request) {
             pressure: c.pressure ?? 101.325,
             isHeating: c.isHeating ?? false,
             isBroken: c.isBroken ?? false,
-          },
+          })),
         });
-      }
-      labState = await db.labState.update({
-        where: { id: existing.id },
-        data: { updatedAt: new Date() },
-        include: { containers: true },
+        return await tx.labState.update({
+          where: { id: existing.id },
+          data: { updatedAt: new Date() },
+          include: { containers: true },
+        });
       });
     } else {
       labState = await db.labState.create({

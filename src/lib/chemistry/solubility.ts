@@ -57,6 +57,7 @@ const ANION_PATTERNS: { pattern: RegExp; name: string }[] = [
   { pattern: /SO3$/, name: "sulfite" },
   { pattern: /CO3$/, name: "carbonate" },
   { pattern: /PO4$/, name: "phosphate" },
+  { pattern: /CrO4$/, name: "chromate" },
   { pattern: /OH$/, name: "hydroxide" },
   { pattern: /S$/, name: "sulfide" },
   { pattern: /O$/, name: "oxide" },
@@ -141,8 +142,8 @@ export function checkSolubility(formula: string): SolubilityResult {
     return { solubility: "soluble", reason: `Sulfate salt — soluble (Rule 4)` };
   }
 
-  // Rule 5: carbonates, phosphates, sulfites — insoluble except alkali/NH4+ (already handled above)
-  if (["carbonate", "phosphate", "sulfite"].includes(anion)) {
+  // Rule 5: carbonates, phosphates, sulfites, chromates — insoluble except alkali/NH4+ (already handled above)
+  if (["carbonate", "phosphate", "sulfite", "chromate"].includes(anion)) {
     return {
       solubility: "insoluble",
       reason: `${cation} ${anion} — insoluble (Rule 5)`,

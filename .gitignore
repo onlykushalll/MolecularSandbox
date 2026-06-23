@@ -48,7 +48,14 @@ dev.log
 dev.out.log
 test
 prompt
-
+.zscripts
 server.log
 # Skills directory
 /skills/
+
+# databases
+*.db
+/db/
+
+# downloads / QA screenshots
+/download/
