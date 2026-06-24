@@ -123,7 +123,8 @@ export function FPHUD({
         <div className="absolute bottom-4 left-4">
           <div className="flex flex-col gap-1 rounded-lg border border-slate-700/50 bg-slate-950/70 px-3 py-2 backdrop-blur-md text-[10px] text-slate-400">
             <span><kbd className="text-slate-300">WASD</kbd> move · <kbd className="text-slate-300">Shift</kbd> sprint</span>
-            <span><kbd className="text-slate-300">E</kbd> interact · <kbd className="text-slate-300">Click</kbd> interact</span>
+            <span><kbd className="text-slate-300">E</kbd>/Click interact · <kbd className="text-slate-300">Q</kbd> drop item</span>
+            <span><kbd className="text-slate-300">T</kbd> terminal · <kbd className="text-slate-300">B</kbd> bunsen · <kbd className="text-slate-300">P</kbd> PPE</span>
             <span><kbd className="text-slate-300">Esc</kbd> release mouse</span>
           </div>
         </div>
