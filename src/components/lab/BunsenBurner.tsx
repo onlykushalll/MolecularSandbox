@@ -29,17 +29,18 @@ export function BunsenBurner({ position, active }: BunsenBurnerProps) {
   }, []);
 
   // Size multiplier based on flame intensity (1=low, 2=medium, 3=high)
+  // Made flames bigger and more visible
   const sizeMult =
-    flameIntensity === 0 ? 0.4
-    : flameIntensity === 1 ? 0.7
-    : flameIntensity === 2 ? 1.0
-    : 1.35;
+    flameIntensity === 0 ? 0.6
+    : flameIntensity === 1 ? 1.0
+    : flameIntensity === 2 ? 1.4
+    : 1.8;
   // Light intensity scales with flame size
   const lightMult =
     flameIntensity === 0 ? 0
-    : flameIntensity === 1 ? 0.6
-    : flameIntensity === 2 ? 1.0
-    : 1.5;
+    : flameIntensity === 1 ? 0.8
+    : flameIntensity === 2 ? 1.3
+    : 2.0;
 
   useFrame((_, delta) => {
     time.current += delta;
@@ -125,47 +126,67 @@ export function BunsenBurner({ position, active }: BunsenBurnerProps) {
         <>
           <pointLight
             ref={lightRef}
-            position={[0, 0.35, 0]}
+            position={[0, 0.5, 0]}
             color="#ff6600"
+            intensity={2.5}
+            distance={4}
+            decay={1.5}
+          />
+          {/* Extra warm glow light */}
+          <pointLight
+            position={[0, 0.3, 0]}
+            color="#ffaa00"
             intensity={1.5}
-            distance={3}
+            distance={2.5}
             decay={2}
           />
 
-          {/* Outer flame cone */}
-          <mesh ref={flameRef} position={[0, 0.42, 0]}>
-            <coneGeometry args={[0.08, 0.35, 16]} />
+          {/* Outer flame cone — bigger, more orange */}
+          <mesh ref={flameRef} position={[0, 0.5, 0]}>
+            <coneGeometry args={[0.12, 0.5, 16]} />
             <meshBasicMaterial
-              color="#ff6600"
+              color="#ff5500"
               transparent
-              opacity={0.6}
+              opacity={0.65}
               blending={THREE.AdditiveBlending}
               side={THREE.DoubleSide}
               depthWrite={false}
             />
           </mesh>
 
-          {/* Inner flame (blue core) */}
-          <mesh ref={innerFlameRef} position={[0, 0.38, 0]}>
-            <coneGeometry args={[0.04, 0.25, 12]} />
+          {/* Inner flame (blue core) — taller */}
+          <mesh ref={innerFlameRef} position={[0, 0.45, 0]}>
+            <coneGeometry args={[0.06, 0.35, 12]} />
             <meshBasicMaterial
-              color="#00aaff"
+              color="#00bbff"
               transparent
-              opacity={0.8}
+              opacity={0.85}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+            />
+          </mesh>
+
+          {/* Bright yellow tip */}
+          <mesh position={[0, 0.7, 0]}>
+            <sphereGeometry args={[0.05, 8, 8]} />
+            <meshBasicMaterial
+              color="#ffdd00"
+              transparent
+              opacity={0.7}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
             />
           </mesh>
 
           {/* Flame particles */}
-          <group ref={flameGroupRef} position={[0, 0.1, 0]}>
+          <group ref={flameGroupRef} position={[0, 0.15, 0]}>
             {flameParticles.map((p, i) => (
               <mesh key={i} position={[0, 0.05, 0]}>
-                <sphereGeometry args={[p.size, 6, 6]} />
+                <sphereGeometry args={[p.size * 1.3, 6, 6]} />
                 <meshBasicMaterial
-                  color={i % 2 === 0 ? "#ff8800" : "#ffaa00"}
+                  color={i % 2 === 0 ? "#ff8800" : "#ffcc00"}
                   transparent
-                  opacity={0.7}
+                  opacity={0.8}
                   blending={THREE.AdditiveBlending}
                   depthWrite={false}
                 />
