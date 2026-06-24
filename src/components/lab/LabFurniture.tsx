@@ -170,7 +170,7 @@ function ShelfCabinet() {
   );
 }
 
-// === FUME HOOD (north wall) ===
+// === FUME HOOD (north wall) — realistic enclosure ===
 function FumeHood() {
   const interactable: Interactable = {
     id: "fume-hood",
@@ -182,45 +182,143 @@ function FumeHood() {
 
   return (
     <InteractableMesh interactable={interactable} highlightColor="#ef4444">
-      {/* Hood body */}
-      <mesh position={[0, 1.25, -5]} castShadow receiveShadow>
-        <boxGeometry args={[4, 2.5, 1]} />
-        <meshStandardMaterial color="#dfe3e8" roughness={0.3} metalness={0.2} />
-      </mesh>
-      {/* Glass sash */}
-      <mesh position={[0, 1.5, -4.5]}>
-        <boxGeometry args={[3.8, 1.8, 0.04]} />
-        <meshPhysicalMaterial
-          color="#b8d4e6"
-          transparent
-          opacity={0.25}
-          roughness={0.05}
-          transmission={0.8}
-          ior={1.45}
-          clearcoat={1}
-        />
-      </mesh>
-      {/* Sash frame */}
-      <mesh position={[0, 1.5, -4.5]}>
-        <boxGeometry args={[3.9, 1.9, 0.06]} />
-        <meshStandardMaterial color="#5a5f6b" roughness={0.3} metalness={0.5} wireframe />
-      </mesh>
-      {/* Work surface inside */}
-      <mesh position={[0, 0.55, -4.8]} receiveShadow>
-        <boxGeometry args={[3.6, 0.05, 0.8]} />
-        <meshStandardMaterial color="#2a2e38" roughness={0.4} metalness={0.3} />
-      </mesh>
-      {/* Exhaust vent on top */}
-      <mesh position={[0, 2.6, -5]}>
-        <cylinderGeometry args={[0.3, 0.3, 0.2, 16]} />
-        <meshStandardMaterial color="#5a5f6b" roughness={0.5} metalness={0.6} />
-      </mesh>
-      {/* Warning label */}
-      <Html position={[0, 2.2, -4.4]} center distanceFactor={8} occlude>
-        <div className="pointer-events-none select-none whitespace-nowrap rounded border border-red-500 bg-red-950/80 px-2 py-0.5 text-[9px] font-bold text-red-300">
-          ⚠ FUME HOOD
-        </div>
-      </Html>
+      <group>
+        {/* === Base cabinet (below the hood) === */}
+        <mesh position={[0, 0.45, -5]} castShadow receiveShadow>
+          <boxGeometry args={[4, 0.9, 1]} />
+          <meshStandardMaterial color="#dfe3e8" roughness={0.4} metalness={0.2} />
+        </mesh>
+        {/* Cabinet doors */}
+        <mesh position={[-1, 0.45, -4.49]}>
+          <boxGeometry args={[1.8, 0.8, 0.02]} />
+          <meshStandardMaterial color="#c8ccd2" roughness={0.4} metalness={0.3} />
+        </mesh>
+        <mesh position={[1, 0.45, -4.49]}>
+          <boxGeometry args={[1.8, 0.8, 0.02]} />
+          <meshStandardMaterial color="#c8ccd2" roughness={0.4} metalness={0.3} />
+        </mesh>
+        {/* Cabinet handles */}
+        <mesh position={[-0.2, 0.45, -4.47]}>
+          <boxGeometry args={[0.02, 0.15, 0.03]} />
+          <meshStandardMaterial color="#888" metalness={0.9} roughness={0.2} />
+        </mesh>
+        <mesh position={[0.2, 0.45, -4.47]}>
+          <boxGeometry args={[0.02, 0.15, 0.03]} />
+          <meshStandardMaterial color="#888" metalness={0.9} roughness={0.2} />
+        </mesh>
+
+        {/* === Hood superstructure (above base) === */}
+        {/* Side panels (left + right) */}
+        <mesh position={[-1.95, 1.7, -5]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 1.6, 1]} />
+          <meshStandardMaterial color="#e8ebef" roughness={0.3} metalness={0.2} />
+        </mesh>
+        <mesh position={[1.95, 1.7, -5]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 1.6, 1]} />
+          <meshStandardMaterial color="#e8ebef" roughness={0.3} metalness={0.2} />
+        </mesh>
+        {/* Back panel */}
+        <mesh position={[0, 1.7, -5.45]} receiveShadow>
+          <boxGeometry args={[4, 1.6, 0.05]} />
+          <meshStandardMaterial color="#d0d4da" roughness={0.5} metalness={0.1} />
+        </mesh>
+        {/* Top panel */}
+        <mesh position={[0, 2.5, -5]} castShadow>
+          <boxGeometry args={[4, 0.1, 1]} />
+          <meshStandardMaterial color="#e8ebef" roughness={0.3} metalness={0.2} />
+        </mesh>
+
+        {/* === Interior work surface === */}
+        <mesh position={[0, 0.93, -5]} receiveShadow>
+          <boxGeometry args={[3.8, 0.04, 0.9]} />
+          <meshStandardMaterial color="#1a1d24" roughness={0.3} metalness={0.4} />
+        </mesh>
+        {/* Interior back wall (white, easy to clean) */}
+        <mesh position={[0, 1.7, -5.43]}>
+          <boxGeometry args={[3.8, 1.5, 0.02]} />
+          <meshStandardMaterial color="#f5f6f8" roughness={0.6} />
+        </mesh>
+
+        {/* === Glass sash (front, vertical sliding) === */}
+        {/* Sash frame (aluminum) */}
+        <mesh position={[0, 1.7, -4.52]}>
+          <boxGeometry args={[3.9, 1.65, 0.04]} />
+          <meshStandardMaterial color="#5a5f6b" roughness={0.3} metalness={0.5} />
+        </mesh>
+        {/* Sash glass (lower portion — open slot at bottom for hands) */}
+        <mesh position={[0, 1.6, -4.51]}>
+          <boxGeometry args={[3.7, 1.0, 0.02]} />
+          <meshPhysicalMaterial
+            color="#b8d4e6"
+            transparent
+            opacity={0.2}
+            roughness={0.02}
+            transmission={0.85}
+            ior={1.45}
+            clearcoat={1}
+            clearcoatRoughness={0.01}
+          />
+        </mesh>
+        {/* Sash handle (horizontal bar at bottom of glass) */}
+        <mesh position={[0, 1.05, -4.49]}>
+          <boxGeometry args={[3.7, 0.06, 0.05]} />
+          <meshStandardMaterial color="#3a3f4b" roughness={0.3} metalness={0.7} />
+        </mesh>
+        {/* Sash handle grips */}
+        <mesh position={[-1.5, 1.05, -4.46]}>
+          <boxGeometry args={[0.15, 0.04, 0.04]} />
+          <meshStandardMaterial color="#888" metalness={0.9} roughness={0.2} />
+        </mesh>
+        <mesh position={[1.5, 1.05, -4.46]}>
+          <boxGeometry args={[0.15, 0.04, 0.04]} />
+          <meshStandardMaterial color="#888" metalness={0.9} roughness={0.2} />
+        </mesh>
+
+        {/* === Exhaust duct on top === */}
+        <mesh position={[0, 2.75, -5]} castShadow>
+          <cylinderGeometry args={[0.35, 0.35, 0.3, 16]} />
+          <meshStandardMaterial color="#5a5f6b" roughness={0.5} metalness={0.6} />
+        </mesh>
+        {/* Duct flange */}
+        <mesh position={[0, 2.6, -5]}>
+          <cylinderGeometry args={[0.4, 0.4, 0.05, 16]} />
+          <meshStandardMaterial color="#3a3f4b" roughness={0.5} metalness={0.7} />
+        </mesh>
+
+        {/* === Interior lighting (LED strip under top panel) === */}
+        <pointLight position={[0, 2.35, -5]} intensity={0.4} color="#ffffff" distance={3} />
+        {/* LED strip visible */}
+        <mesh position={[0, 2.43, -5]}>
+          <boxGeometry args={[3.5, 0.02, 0.05]} />
+          <meshStandardMaterial
+            color="#ffffff"
+            emissive="#ffffff"
+            emissiveIntensity={1.2}
+            toneMapped={false}
+          />
+        </mesh>
+
+        {/* === Gas + vacuum valves on side panel === */}
+        <mesh position={[-1.85, 1.4, -4.5]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.1, 8]} />
+          <meshStandardMaterial color="#c0392b" roughness={0.3} metalness={0.5} />
+        </mesh>
+        <mesh position={[-1.85, 1.2, -4.5]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.1, 8]} />
+          <meshStandardMaterial color="#2980b9" roughness={0.3} metalness={0.5} />
+        </mesh>
+        <mesh position={[-1.85, 1.0, -4.5]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.1, 8]} />
+          <meshStandardMaterial color="#27ae60" roughness={0.3} metalness={0.5} />
+        </mesh>
+
+        {/* === Warning label === */}
+        <Html position={[0, 2.65, -4.4]} center distanceFactor={6} occlude>
+          <div className="pointer-events-none select-none whitespace-nowrap rounded border border-red-500 bg-red-950/90 px-2 py-0.5 text-[9px] font-bold text-red-300">
+            ⚠ FUME HOOD — USE FOR DANGEROUS REACTIONS
+          </div>
+        </Html>
+      </group>
     </InteractableMesh>
   );
 }
@@ -451,6 +549,140 @@ function Decor() {
         <cylinderGeometry args={[0.22, 0.22, 0.01, 24]} />
         <meshStandardMaterial color="#f5f6f8" roughness={0.5} />
       </mesh>
+
+      {/* === Fire extinguisher (near door, south wall) === */}
+      <group position={[4.5, 0, 5.5]}>
+        {/* Body */}
+        <mesh position={[0, 0.35, 0]} castShadow>
+          <cylinderGeometry args={[0.08, 0.08, 0.55, 16]} />
+          <meshStandardMaterial color="#c0392b" roughness={0.3} metalness={0.4} />
+        </mesh>
+        {/* Top neck */}
+        <mesh position={[0, 0.68, 0]} castShadow>
+          <cylinderGeometry args={[0.04, 0.06, 0.08, 12]} />
+          <meshStandardMaterial color="#1a1d24" roughness={0.4} metalness={0.5} />
+        </mesh>
+        {/* Handle */}
+        <mesh position={[0, 0.74, 0]} castShadow>
+          <boxGeometry args={[0.12, 0.03, 0.04]} />
+          <meshStandardMaterial color="#1a1d24" roughness={0.4} metalness={0.6} />
+        </mesh>
+        {/* Label */}
+        <Html position={[0, 0.4, 0.09]} transform distanceFactor={2} occlude>
+          <div className="flex flex-col items-center justify-center bg-red-700 text-white" style={{ width: "30px", height: "40px", fontSize: "4px" }}>
+            <div style={{ fontSize: "8px" }}>🔥</div>
+            <div style={{ fontSize: "3px", fontWeight: "bold" }}>FIRE</div>
+          </div>
+        </Html>
+      </group>
+
+      {/* === Eye wash station (near sink, west wall) === */}
+      <group position={[-7.5, 0, 3.5]}>
+        {/* Wall mount plate */}
+        <mesh position={[0, 1.2, 0]} castShadow>
+          <boxGeometry args={[0.4, 0.3, 0.05]} />
+          <meshStandardMaterial color="#1a1d24" roughness={0.4} metalness={0.5} />
+        </mesh>
+        {/* Sign */}
+        <Html position={[0, 1.3, 0.04]} transform distanceFactor={2} occlude>
+          <div className="flex items-center justify-center bg-green-600 text-white" style={{ width: "35px", height: "15px", fontSize: "4px", fontWeight: "bold" }}>
+            EYE WASH
+          </div>
+        </Html>
+        {/* Two nozzles */}
+        <mesh position={[-0.06, 1.0, 0.03]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.015, 0.015, 0.08, 8]} />
+          <meshStandardMaterial color="#c0c4cc" roughness={0.2} metalness={0.8} />
+        </mesh>
+        <mesh position={[0.06, 1.0, 0.03]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.015, 0.015, 0.08, 8]} />
+          <meshStandardMaterial color="#c0c4cc" roughness={0.2} metalness={0.8} />
+        </mesh>
+        {/* Basin */}
+        <mesh position={[0, 0.95, 0.15]} castShadow>
+          <boxGeometry args={[0.35, 0.04, 0.2]} />
+          <meshStandardMaterial color="#5a5f6b" roughness={0.4} metalness={0.5} />
+        </mesh>
+      </group>
+
+      {/* === Whiteboard on east wall === */}
+      <mesh position={[7.89, 1.6, -1]} castShadow>
+        <boxGeometry args={[0.02, 1.0, 1.5]} />
+        <meshStandardMaterial color="#f8f9fa" roughness={0.3} />
+      </mesh>
+      <Html position={[7.85, 1.6, -1]} transform distanceFactor={2} occlude>
+        <div className="bg-white p-2" style={{ width: "150px", height: "100px" }}>
+          <div className="text-[6px] font-bold text-slate-800">LAB NOTES</div>
+          <div className="mt-1 text-[5px] text-slate-600">
+            <div>• HCl + NaOH → NaCl + H₂O</div>
+            <div>• ΔT = +278°C (exothermic)</div>
+            <div>• Always wear PPE!</div>
+            <div>• Use fume hood for gases</div>
+          </div>
+        </div>
+      </Html>
+
+      {/* === Fire blanket box (near safety station) === */}
+      <mesh position={[-5, 1.5, 5.89]} castShadow>
+        <boxGeometry args={[0.4, 0.4, 0.04]} />
+        <meshStandardMaterial color="#c0392b" roughness={0.4} metalness={0.3} />
+      </mesh>
+      <Html position={[-5, 1.5, 5.92]} transform distanceFactor={2} occlude>
+        <div className="flex items-center justify-center bg-red-700 text-white" style={{ width: "35px", height: "35px", fontSize: "5px", fontWeight: "bold" }}>
+          FIRE BLANKET
+        </div>
+      </Html>
+
+      {/* === Lab stool (movable, near main bench) === */}
+      <group position={[2.5, 0, 1.5]}>
+        {/* Seat */}
+        <mesh position={[0, 0.65, 0]} castShadow>
+          <cylinderGeometry args={[0.18, 0.18, 0.05, 16]} />
+          <meshStandardMaterial color="#2a2e38" roughness={0.5} metalness={0.2} />
+        </mesh>
+        {/* Post */}
+        <mesh position={[0, 0.35, 0]} castShadow>
+          <cylinderGeometry args={[0.03, 0.03, 0.55, 8]} />
+          <meshStandardMaterial color="#5a5f6b" roughness={0.3} metalness={0.8} />
+        </mesh>
+        {/* Base (5 wheels) */}
+        <mesh position={[0, 0.03, 0]} castShadow>
+          <cylinderGeometry args={[0.2, 0.2, 0.03, 5]} />
+          <meshStandardMaterial color="#3a3f4b" roughness={0.4} metalness={0.6} />
+        </mesh>
+      </group>
+
+      {/* === Test tube rack on main bench === */}
+      <group position={[2, 1.0, -0.3]}>
+        {/* Rack base */}
+        <mesh position={[0, 0.02, 0]} castShadow>
+          <boxGeometry args={[0.3, 0.04, 0.08]} />
+          <meshStandardMaterial color="#3a3f4b" roughness={0.5} metalness={0.3} />
+        </mesh>
+        {/* Top rack with holes */}
+        <mesh position={[0, 0.12, 0]} castShadow>
+          <boxGeometry args={[0.3, 0.03, 0.08]} />
+          <meshStandardMaterial color="#3a3f4b" roughness={0.5} metalness={0.3} />
+        </mesh>
+        {/* Test tubes (3) */}
+        {[-0.08, 0, 0.08].map((x, i) => (
+          <group key={i} position={[x, 0.05, 0]}>
+            <mesh position={[0, 0.08, 0]}>
+              <cylinderGeometry args={[0.012, 0.01, 0.15, 8]} />
+              <meshPhysicalMaterial color="#e8f5f4" transparent opacity={0.3} transmission={0.8} ior={1.5} roughness={0.05} />
+            </mesh>
+            {/* Liquid in tube */}
+            <mesh position={[0, 0.04, 0]}>
+              <cylinderGeometry args={[0.01, 0.009, 0.06, 8]} />
+              <meshStandardMaterial
+                color={["#4488cc", "#cc4444", "#44cc44"][i]}
+                transparent
+                opacity={0.7}
+              />
+            </mesh>
+          </group>
+        ))}
+      </group>
     </group>
   );
 }

@@ -191,6 +191,40 @@ export function BenchBeaker({ container }: { container: ContainerState }) {
           />
         )}
 
+        {/* === Bubbles when heating or hot === */}
+        {fillLevel > 0.05 && (container.isHeating || container.temperature > 50) && (
+          <Bubbles
+            count={Math.min(12, Math.floor(container.temperature / 12))}
+            radius={beakerRadius * 0.7}
+            baseY={0.01}
+            topY={fillLevel * beakerHeight}
+          />
+        )}
+
+        {/* === Steam when temp > 70°C === */}
+        {container.temperature > 70 && fillLevel > 0.05 && (
+          <SteamCloud
+            intensity={Math.min(1, (container.temperature - 70) / 30)}
+            radius={beakerRadius * 0.5}
+            topY={beakerHeight}
+          />
+        )}
+
+        {/* === Precipitate particles (if any) === */}
+        {container.precipitate && container.precipitate.length > 0 && fillLevel > 0.05 && (
+          <Precipitate
+            count={Math.min(30, container.precipitate.reduce((s, p) => s + p.moles * 20, 0) | 0)}
+            color={container.precipitate[0]?.color || "#dddddd"}
+            radius={beakerRadius * 0.8}
+            baseY={0.02}
+          />
+        )}
+
+        {/* === Gas emission (if gasEmitting) === */}
+        {container.gasEmitting && fillLevel > 0.05 && (
+          <GasEmission color={container.gasEmitting.color || "#cccccc"} />
+        )}
+
         {/* Selection ring */}
         {isSelected && (
           <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -224,5 +258,149 @@ export function BenchBeaker({ container }: { container: ContainerState }) {
         </Html>
       </group>
     </InteractableMesh>
+  );
+}
+
+// === Bubbles sub-component ===
+function Bubbles({ count, radius, baseY, topY }: { count: number; radius: number; baseY: number; topY: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const positions = useMemo(() => {
+    return Array.from({ length: count }).map(() => ({
+      x: (Math.random() - 0.5) * radius * 1.6,
+      z: (Math.random() - 0.5) * radius * 1.6,
+      startY: baseY + Math.random() * 0.02,
+      speed: 0.3 + Math.random() * 0.5,
+      size: 0.008 + Math.random() * 0.015,
+      phase: Math.random() * Math.PI * 2,
+    }));
+  }, [count, radius, baseY]);
+
+  useFrame((state) => {
+    if (!ref.current) return;
+    const t = state.clock.elapsedTime;
+    ref.current.children.forEach((child, i) => {
+      const data = positions[i];
+      if (!data) return;
+      const cycle = (t * data.speed + data.phase) % 1;
+      (child as THREE.Mesh).position.y = data.startY + cycle * (topY - baseY);
+      (child as THREE.Mesh).scale.setScalar(cycle < 0.1 ? cycle * 10 : 1);
+    });
+  });
+
+  return (
+    <group ref={ref}>
+      {positions.map((b, i) => (
+        <mesh key={i} position={[b.x, b.startY, b.z]}>
+          <sphereGeometry args={[b.size, 8, 8]} />
+          <meshStandardMaterial color="#ffffff" transparent opacity={0.6} roughness={0} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// === SteamCloud sub-component ===
+function SteamCloud({ intensity, radius, topY }: { intensity: number; radius: number; topY: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const particles = useMemo(() => {
+    return Array.from({ length: 8 }).map(() => ({
+      x: (Math.random() - 0.5) * radius,
+      z: (Math.random() - 0.5) * radius,
+      speed: 0.2 + Math.random() * 0.3,
+      phase: Math.random() * Math.PI * 2,
+      size: 0.03 + Math.random() * 0.04,
+    }));
+  }, [radius]);
+
+  useFrame((state) => {
+    if (!ref.current) return;
+    const t = state.clock.elapsedTime;
+    ref.current.children.forEach((child, i) => {
+      const data = particles[i];
+      if (!data) return;
+      const cycle = (t * data.speed + data.phase) % 1;
+      (child as THREE.Mesh).position.y = topY + cycle * 0.3;
+      (child as THREE.Mesh).position.x = data.x + Math.sin(t * 2 + data.phase) * 0.02;
+      (child as THREE.Mesh).position.z = data.z + Math.cos(t * 2 + data.phase) * 0.02;
+      (child as THREE.Mesh).scale.setScalar((1 - cycle) * data.size * 2);
+      const mat = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      mat.opacity = (1 - cycle) * 0.3 * intensity;
+    });
+  });
+
+  return (
+    <group ref={ref}>
+      {particles.map((p, i) => (
+        <mesh key={i} position={[p.x, topY, p.z]}>
+          <sphereGeometry args={[p.size, 8, 8]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.2} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// === Precipitate sub-component ===
+function Precipitate({ count, color, radius, baseY }: { count: number; color: string; radius: number; baseY: number }) {
+  const positions = useMemo(() => {
+    return Array.from({ length: count }).map(() => ({
+      x: (Math.random() - 0.5) * radius * 1.6,
+      z: (Math.random() - 0.5) * radius * 1.6,
+      y: baseY + Math.random() * 0.01,
+      size: 0.01 + Math.random() * 0.015,
+      rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI] as [number, number, number],
+    }));
+  }, [count, radius, baseY]);
+
+  return (
+    <group>
+      {positions.map((p, i) => (
+        <mesh key={i} position={[p.x, p.y, p.z]} rotation={p.rotation}>
+          <dodecahedronGeometry args={[p.size, 0]} />
+          <meshStandardMaterial color={color} roughness={0.6} metalness={0.1} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// === GasEmission sub-component ===
+function GasEmission({ color }: { color: string }) {
+  const ref = useRef<THREE.Group>(null);
+  const particles = useMemo(() => {
+    return Array.from({ length: 6 }).map((_, i) => ({
+      x: (Math.random() - 0.5) * 0.1,
+      z: (Math.random() - 0.5) * 0.1,
+      speed: 0.15 + Math.random() * 0.2,
+      phase: Math.random() * Math.PI * 2,
+      size: 0.02 + Math.random() * 0.03,
+    }));
+  }, []);
+
+  useFrame((state) => {
+    if (!ref.current) return;
+    const t = state.clock.elapsedTime;
+    ref.current.children.forEach((child, i) => {
+      const data = particles[i];
+      if (!data) return;
+      const cycle = (t * data.speed + data.phase) % 1;
+      (child as THREE.Mesh).position.y = 0.35 + cycle * 0.4;
+      (child as THREE.Mesh).position.x = data.x + Math.sin(t + data.phase) * 0.03 * cycle;
+      (child as THREE.Mesh).position.z = data.z + Math.cos(t + data.phase) * 0.03 * cycle;
+      (child as THREE.Mesh).scale.setScalar((1 - cycle) * data.size * 1.5);
+      const mat = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      mat.opacity = (1 - cycle) * 0.4;
+    });
+  });
+
+  return (
+    <group ref={ref}>
+      {particles.map((p, i) => (
+        <mesh key={i} position={[p.x, 0.35, p.z]}>
+          <sphereGeometry args={[p.size, 8, 8]} />
+          <meshBasicMaterial color={color} transparent opacity={0.3} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
   );
 }
