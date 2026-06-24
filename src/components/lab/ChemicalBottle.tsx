@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import {
@@ -12,13 +12,18 @@ import { InteractableMesh } from "./InteractableMesh";
 import type { ChemicalData } from "@/lib/chemistry/types";
 
 /**
- * ChemicalBottle — a realistic lab reagent bottle on the shelf
+ * ChemicalBottle — realistic reagent bottle using LatheGeometry
  *
- * Renders a glass bottle with colored liquid inside, a label, and a cap.
- * Interactable: look + E to pick up.
+ * Profile (side view, bottom→top):
+ *   - Wide cylindrical body (6cm dia, 10cm tall)
+ *   - Shoulder (curves inward over 1.5cm)
+ *   - Narrow neck (2cm dia, 1.5cm tall)
+ *   - Cap (2.5cm dia, 1.5cm tall)
  *
- * Bottle shape: cylindrical body with narrow neck + cap.
- * Liquid color comes from the chemical's hexColor.
+ * Glass: meshPhysicalMaterial with transmission, IOR 1.5, clearcoat
+ * Liquid: colored, fills body to ~80%
+ * Label: paper texture, wraps around body front
+ * Label text: ONLY shows when hovered (not always)
  */
 
 const BOTTLE_COLORS: Record<string, { cap: string; glass: string }> = {
@@ -45,7 +50,8 @@ export function ChemicalBottle({
 }) {
   const heldItem = usePlayerStore((s) => s.heldItem);
   const isHeld = heldItem?.type === "chemical" && heldItem.chemicalId === chemical.id;
-  const chemicalsMap = useLabStore((s) => s.chemicalsMap);
+  const hoveredId = usePlayerStore((s) => s.hoveredInteractable?.id);
+  const isHovered = hoveredId === `bottle-${chemical.id}`;
   const ownedVolume = usePlayerStore((s) => s.ownedChemicals.get(chemical.id) || 0);
 
   const interactable: Interactable = {
@@ -59,105 +65,142 @@ export function ChemicalBottle({
 
   const colors = BOTTLE_COLORS[chemical.category] || BOTTLE_COLORS.reagent;
 
-  // Don't render if this bottle is currently held
+  // === Bottle glass profile (lathe) — realistic reagent bottle shape ===
+  const bottleGeometry = useMemo(() => {
+    const points: THREE.Vector2[] = [];
+    // Bottom (flat, slight inset)
+    points.push(new THREE.Vector2(0.028, 0));
+    points.push(new THREE.Vector2(0.030, 0.001));
+    // Body wall going up (straight, 8cm)
+    for (let i = 0; i <= 8; i++) {
+      const y = (i / 8) * 0.08;
+      points.push(new THREE.Vector2(0.030, y));
+    }
+    // Shoulder (curves inward — bezier-like)
+    for (let i = 1; i <= 6; i++) {
+      const t = i / 6;
+      const y = 0.08 + t * 0.015;
+      // Smooth curve from 0.030 → 0.012 (neck radius)
+      const r = 0.030 - (0.030 - 0.012) * (t * t * (3 - 2 * t));
+      points.push(new THREE.Vector2(r, y));
+    }
+    // Neck (straight, 1cm)
+    for (let i = 1; i <= 4; i++) {
+      const y = 0.095 + (i / 4) * 0.01;
+      points.push(new THREE.Vector2(0.012, y));
+    }
+    // Neck lip (slight flare)
+    points.push(new THREE.Vector2(0.013, 0.106));
+    points.push(new THREE.Vector2(0.013, 0.108));
+    return new THREE.LatheGeometry(points, 32);
+  }, []);
+
+  // === Liquid profile (fills body, separate lathe) ===
+  const liquidGeometry = useMemo(() => {
+    const fillLevel = Math.min(0.85, 0.2 + (ownedVolume / 100) * 0.65);
+    const points: THREE.Vector2[] = [];
+    points.push(new THREE.Vector2(0, 0.002));
+    points.push(new THREE.Vector2(0.027, 0.002));
+    // Liquid surface
+    const liquidHeight = fillLevel * 0.08;
+    for (let i = 0; i <= 6; i++) {
+      const y = (i / 6) * liquidHeight;
+      // Match body taper at top of liquid
+      let r = 0.027;
+      if (liquidHeight > 0.06) {
+        const shoulderT = Math.max(0, (y - 0.06) / 0.02);
+        r = 0.027 - (0.027 - 0.011) * (shoulderT * shoulderT * (3 - 2 * shoulderT));
+      }
+      points.push(new THREE.Vector2(Math.max(0.005, r), y));
+    }
+    return new THREE.LatheGeometry(points, 32);
+  }, [ownedVolume]);
+
+  // === Cap geometry (separate cylinder) ===
+  const capY = 0.109;
+
   if (isHeld) return null;
 
-  // Liquid fill level based on owned volume (0-100mL → 0.2-0.9 fill)
-  const fillLevel = Math.min(0.9, 0.2 + (ownedVolume / 100) * 0.7);
-
   return (
-    <InteractableMesh
-      interactable={interactable}
-      highlightColor="#f59e0b"
-    >
+    <InteractableMesh interactable={interactable} highlightColor="#f59e0b">
       <group position={position}>
-        {/* Bottle body (glass) */}
-        <mesh position={[0, 0.08, 0]} castShadow>
-          <cylinderGeometry args={[0.06, 0.065, 0.16, 16]} />
+        {/* === Glass bottle (lathe) === */}
+        <mesh geometry={bottleGeometry} castShadow>
           <meshPhysicalMaterial
             color={colors.glass}
             transparent
             opacity={0.35}
-            roughness={0.05}
-            transmission={0.7}
-            ior={1.45}
+            roughness={0.02}
+            metalness={0}
+            transmission={0.85}
+            ior={1.5}
             clearcoat={1}
-            thickness={0.02}
+            clearcoatRoughness={0.02}
+            thickness={0.01}
+            side={THREE.DoubleSide}
           />
         </mesh>
 
-        {/* Liquid inside */}
-        <mesh position={[0, 0.08 - 0.08 + fillLevel * 0.08, 0]}>
-          <cylinderGeometry args={[0.055, 0.06, fillLevel * 0.15, 16]} />
+        {/* === Liquid inside (lathe, slightly smaller) === */}
+        <mesh geometry={liquidGeometry}>
           <meshStandardMaterial
             color={chemical.hexColor}
             transparent
-            opacity={0.75}
-            roughness={0.2}
+            opacity={0.78}
+            roughness={0.15}
             emissive={chemical.hexColor}
-            emissiveIntensity={0.05}
+            emissiveIntensity={0.04}
           />
         </mesh>
 
-        {/* Neck */}
-        <mesh position={[0, 0.2, 0]} castShadow>
-          <cylinderGeometry args={[0.025, 0.035, 0.04, 12]} />
-          <meshPhysicalMaterial
-            color={colors.glass}
-            transparent
-            opacity={0.35}
-            roughness={0.05}
-            transmission={0.7}
-            ior={1.45}
-          />
-        </mesh>
-
-        {/* Cap */}
-        <mesh position={[0, 0.235, 0]} castShadow>
-          <cylinderGeometry args={[0.028, 0.028, 0.03, 12]} />
+        {/* === Cap (cylinder with rounded top) === */}
+        <mesh position={[0, capY + 0.008, 0]} castShadow>
+          <cylinderGeometry args={[0.013, 0.013, 0.016, 16]} />
           <meshStandardMaterial
             color={colors.cap}
             roughness={0.4}
             metalness={0.1}
           />
         </mesh>
-
-        {/* Label */}
-        <mesh position={[0, 0.09, 0.061]}>
-          <planeGeometry args={[0.08, 0.06]} />
-          <meshStandardMaterial color="#f5f5dc" roughness={0.8} />
+        {/* Cap top (slightly domed) */}
+        <mesh position={[0, capY + 0.017, 0]}>
+          <sphereGeometry args={[0.013, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.5]} />
+          <meshStandardMaterial color={colors.cap} roughness={0.4} metalness={0.1} />
         </mesh>
 
-        {/* Label text */}
-        <Html
-          position={[0, 0.09, 0.063]}
-          transform
-          distanceFactor={1.5}
-          occlude
-        >
-          <div
-            className="flex flex-col items-center justify-center bg-beige text-center"
-            style={{
-              width: "40px",
-              height: "30px",
-              background: "#f5f5dc",
-              fontSize: "5px",
-              lineHeight: "6px",
-              color: "#1a1a1a",
-              fontFamily: "monospace",
-              padding: "1px",
-            }}
+        {/* === Label (paper, wraps front of body) === */}
+        <mesh position={[0, 0.04, 0.029]}>
+          <planeGeometry args={[0.04, 0.035]} />
+          <meshStandardMaterial color="#f5f1e8" roughness={0.85} side={THREE.DoubleSide} />
+        </mesh>
+        {/* Label border line */}
+        <mesh position={[0, 0.04, 0.0291]}>
+          <ringGeometry args={[0.019, 0.02, 4]} />
+          <meshBasicMaterial color="#8b7355" transparent opacity={0} />
+        </mesh>
+
+        {/* === Label text (ONLY when hovered) === */}
+        {isHovered && (
+          <Html
+            position={[0, 0.16, 0]}
+            center
+            distanceFactor={3}
+            occlude
+            zIndexRange={[10, 0]}
           >
-            <div style={{ fontWeight: "bold", fontSize: "5px" }}>
-              {chemical.formula}
+            <div className="pointer-events-none select-none whitespace-nowrap rounded-md border border-amber-500/50 bg-slate-950/90 px-2.5 py-1.5 backdrop-blur-md shadow-xl">
+              <div className="text-[11px] font-bold text-amber-300">
+                {chemical.name}
+              </div>
+              <div className="font-mono text-[9px] text-slate-400">
+                {chemical.formula} · M={chemical.molarMass}
+              </div>
+              <div className="mt-0.5 text-[8px] text-emerald-400">
+                {ownedVolume}mL · [E] to pick up
+              </div>
             </div>
-            <div style={{ fontSize: "3px", color: "#555" }}>
-              {chemical.name.length > 12
-                ? chemical.name.substring(0, 10) + ".."
-                : chemical.name}
-            </div>
-          </div>
-        </Html>
+          </Html>
+        )}
       </group>
     </InteractableMesh>
   );
