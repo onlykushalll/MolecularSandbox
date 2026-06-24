@@ -634,7 +634,7 @@ export const useLabStore = create<LabStore>((set, get) => ({
     const state = get();
     let changed = false;
     let brokenNow = false;
-    let brokenContainerId: string | null = null;
+    let brokenContainerId: any = null;
     const newContainers = state.containers.map((c) => {
       // Decay gas emission intensity over time
       let gasEmitting = c.gasEmitting;

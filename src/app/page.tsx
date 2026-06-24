@@ -35,6 +35,12 @@ import {
   Trophy,
   Activity,
   Droplet,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { useLabStore } from "@/lib/store/lab-store";
 import type { ChemicalData, ReactionData, ContainerState } from "@/lib/chemistry/types";
@@ -81,6 +87,9 @@ export default function Home() {
   const [flashKey, setFlashKey] = useState(0);
   const [leftPanel, setLeftPanel] = useState<LeftPanel>("shelf");
   const [rightPanel, setRightPanel] = useState<RightPanel>("instruments");
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
   const prevReactionRef = useRef<unknown>(null);
@@ -215,8 +224,42 @@ export default function Home() {
         toggleSound();
         return;
       }
-      // Escape = deselect
+      // [ = toggle left sidebar
+      if (key === "[") {
+        setLeftCollapsed((v) => !v);
+        if (state.soundEnabled) getSoundManager().play("click");
+        return;
+      }
+      // ] = toggle right sidebar
+      if (key === "]") {
+        setRightCollapsed((v) => !v);
+        if (state.soundEnabled) getSoundManager().play("click");
+        return;
+      }
+      // F = toggle focus/zen mode (collapse both)
+      if (key === "f") {
+        setFocusMode((v) => {
+          const next = !v;
+          if (next) {
+            setLeftCollapsed(true);
+            setRightCollapsed(true);
+          } else {
+            setLeftCollapsed(false);
+            setRightCollapsed(false);
+          }
+          if (state.soundEnabled) getSoundManager().play("click");
+          return next;
+        });
+        return;
+      }
+      // Escape = deselect (or exit focus mode first)
       if (key === "escape") {
+        if (focusMode) {
+          setFocusMode(false);
+          setLeftCollapsed(false);
+          setRightCollapsed(false);
+          return;
+        }
         selectContainer(null);
         return;
       }
@@ -231,7 +274,17 @@ export default function Home() {
     startPourAnimation,
     togglePHStrip,
     toggleSound,
+    focusMode,
   ]);
+
+  // Sync focus mode with individual collapse states
+  useEffect(() => {
+    if (!leftCollapsed && !rightCollapsed) {
+      setFocusMode(false);
+    } else if (leftCollapsed && rightCollapsed) {
+      setFocusMode(true);
+    }
+  }, [leftCollapsed, rightCollapsed]);
 
   // Reaction flash effect + toast
   useEffect(() => {
@@ -491,8 +544,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Top header bar — enhanced with animated gradient background */}
-      <header className="relative flex h-16 items-center justify-between overflow-hidden border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-4 backdrop-blur">
+      {/* Top header bar — elevated with deeper glass + depth */}
+      <header className="relative flex h-16 items-center justify-between overflow-hidden border-b border-slate-800/80 header-elevated px-4">
         {/* Animated background dots */}
         <div
           className="absolute inset-0 opacity-30"
@@ -583,6 +636,64 @@ export default function Home() {
         </div>
 
         <div className="relative flex items-center gap-1.5">
+          {/* Focus mode toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const next = !focusMode;
+              setFocusMode(next);
+              setLeftCollapsed(next);
+              setRightCollapsed(next);
+              if (soundEnabled) getSoundManager().play("click");
+            }}
+            className={cn(
+              "btn-premium h-8 px-2 text-xs",
+              focusMode
+                ? "text-emerald-400 hover:bg-emerald-950/40"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            )}
+            title="Focus mode (F) — hide both panels"
+          >
+            {focusMode ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </Button>
+          {/* Left sidebar toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setLeftCollapsed((v) => !v);
+              if (soundEnabled) getSoundManager().play("click");
+            }}
+            className={cn(
+              "btn-premium h-8 px-2 text-xs",
+              !leftCollapsed
+                ? "text-cyan-400 hover:bg-cyan-950/40"
+                : "text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+            )}
+            title="Toggle left panel ([)"
+          >
+            {leftCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
+          </Button>
+          {/* Right sidebar toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setRightCollapsed((v) => !v);
+              if (soundEnabled) getSoundManager().play("click");
+            }}
+            className={cn(
+              "btn-premium h-8 px-2 text-xs",
+              !rightCollapsed
+                ? "text-cyan-400 hover:bg-cyan-950/40"
+                : "text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+            )}
+            title="Toggle right panel (])"
+          >
+            {rightCollapsed ? <PanelRightOpen className="h-3.5 w-3.5" /> : <PanelRightClose className="h-3.5 w-3.5" />}
+          </Button>
+          <div className="mx-1 h-5 w-px bg-slate-700" />
           {/* Sound toggle */}
           <Button
             variant="ghost"
@@ -612,37 +723,89 @@ export default function Home() {
 
       {/* Main 3-column layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left panel — Shelf / Presets */}
-        <aside className="flex w-80 flex-shrink-0 flex-col border-r border-slate-800 bg-slate-950/50 dotted-texture">
-          {/* Left panel tabs */}
-          <div className="flex gap-1 border-b border-slate-800 bg-slate-950/80 p-2">
-            {leftPanelTabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setLeftPanel(tab.id)}
-                  className={cn(
-                    "tab-indicator relative flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all duration-200",
-                    leftPanel === tab.id
-                      ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm shadow-emerald-500/30 tab-glow-active inner-sheen"
-                      : "text-slate-400 hover:bg-slate-800/60 hover:text-white hover:scale-105"
-                  )}
-                >
-                  <Icon className={cn("h-3.5 w-3.5 transition-transform", leftPanel === tab.id && "scale-110")} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-          <div key={`left-${leftPanel}`} className="flex-1 overflow-hidden panel-fade">
-            {leftPanel === "shelf" && <ChemicalShelf />}
-            {leftPanel === "presets" && <PresetExperiments />}
-            {leftPanel === "reactions" && <ReactionLibrary />}
-            {leftPanel === "kinetics" && <KineticsExplorer />}
-            {leftPanel === "periodic-table" && <PeriodicTable />}
-            {leftPanel === "solubility" && <SolubilityRulesPanel />}
-          </div>
+        {/* Left panel — Shelf / Presets (collapsible) */}
+        <aside
+          className={cn(
+            "relative flex flex-shrink-0 flex-col sidebar-transition border-r border-slate-800/60 dotted-texture",
+            leftCollapsed ? "w-12 sidebar-rail" : "w-80 bg-slate-950/50"
+          )}
+        >
+          {/* Floating toggle button on the border */}
+          <button
+            onClick={() => {
+              setLeftCollapsed((v) => !v);
+              if (soundEnabled) getSoundManager().play("click");
+            }}
+            className={cn(
+              "sidebar-toggle-btn left",
+              leftCollapsed && "collapsed toggle-hint-pulse"
+            )}
+            title={leftCollapsed ? "Expand left panel ( [ )" : "Collapse left panel ( [ )"}
+          >
+            <PanelLeftClose className="h-3.5 w-3.5" />
+          </button>
+
+          {/* Collapsed rail — icon-only vertical tabs */}
+          {leftCollapsed && (
+            <div className="sidebar-slide-in flex flex-col items-center gap-1.5 py-3">
+              {leftPanelTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      if (leftPanel === tab.id) {
+                        setLeftCollapsed(false);
+                      } else {
+                        setLeftPanel(tab.id);
+                        setLeftCollapsed(false);
+                      }
+                      if (soundEnabled) getSoundManager().play("click");
+                    }}
+                    data-tooltip={tab.label}
+                    className={cn("rail-btn", leftPanel === tab.id && "active")}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Expanded panel content */}
+          {!leftCollapsed && (
+            <div className="sidebar-expanded-content flex h-full flex-col">
+              {/* Left panel tabs */}
+              <div className="flex gap-1 border-b border-slate-800 bg-slate-950/80 p-2">
+                {leftPanelTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setLeftPanel(tab.id)}
+                      className={cn(
+                        "tab-indicator tab-switch-smooth relative flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium",
+                        leftPanel === tab.id
+                          ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm shadow-emerald-500/30 tab-glow-active inner-sheen"
+                          : "text-slate-400 hover:bg-slate-800/60 hover:text-white hover:scale-105"
+                      )}
+                    >
+                      <Icon className={cn("h-3.5 w-3.5 transition-transform", leftPanel === tab.id && "scale-110")} />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div key={`left-${leftPanel}`} className="flex-1 overflow-hidden panel-fade">
+                {leftPanel === "shelf" && <ChemicalShelf />}
+                {leftPanel === "presets" && <PresetExperiments />}
+                {leftPanel === "reactions" && <ReactionLibrary />}
+                {leftPanel === "kinetics" && <KineticsExplorer />}
+                {leftPanel === "periodic-table" && <PeriodicTable />}
+                {leftPanel === "solubility" && <SolubilityRulesPanel />}
+              </div>
+            </div>
+          )}
         </aside>
 
         {/* Center — 3D Scene */}
@@ -677,18 +840,25 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Bottom overlay: controls hint */}
+          {/* Bottom overlay: controls hint — with sidebar toggle hints */}
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2">
             <div className="flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-900/85 px-4 py-1.5 backdrop-blur shadow-xl inner-sheen">
-              <span className="text-[10px] text-slate-400">🖱️ Drag rotate</span>
+              <span className="text-[10px] text-slate-400">🖱️ Drag</span>
               <span className="text-slate-600">·</span>
-              <span className="text-[10px] text-slate-400">Scroll zoom</span>
+              <span className="text-[10px] text-slate-400">Scroll</span>
               <span className="text-slate-600">·</span>
-              <span className="text-[10px] text-slate-400">Click select</span>
+              <span className="text-[10px] text-slate-400">Click</span>
               <span className="text-slate-600">·</span>
               <span className="text-[10px] text-amber-400 hover-dot">⇧+Click pour</span>
               <span className="text-slate-600">·</span>
-              <span className="text-[10px] text-emerald-400 glow-emerald">⌨ 1/2/3 R H E P T M</span>
+              <span className="flex items-center gap-1 text-[10px] text-emerald-400 glow-emerald">
+                <span className="kbd-hint">[</span>
+                <span className="kbd-hint">]</span>
+                <span className="kbd-hint">F</span>
+                panels
+              </span>
+              <span className="text-slate-600">·</span>
+              <span className="text-[10px] text-cyan-400">⌨ 1/2/3 R H E P T M</span>
             </div>
           </div>
 
@@ -766,67 +936,124 @@ export default function Home() {
           </div>
         </main>
 
-        {/* Right panel — Instruments / Safety / AI / Saves / Journal */}
-        <aside className="flex w-96 flex-shrink-0 flex-col border-l border-slate-800 bg-slate-950/50 dotted-texture">
-          {/* Right panel tabs */}
-          <div className="flex gap-1 border-b border-slate-800 bg-slate-950/80 p-2">
-            {rightPanelTabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setRightPanel(tab.id)}
-                  className={cn(
-                    "tab-indicator relative flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-[11px] font-medium transition-all duration-200",
-                    rightPanel === tab.id
-                      ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm shadow-emerald-500/30 tab-glow-active inner-sheen"
-                      : "text-slate-400 hover:bg-slate-800/60 hover:text-white hover:scale-105"
-                  )}
-                >
-                  <Icon className={cn("h-3.5 w-3.5 transition-transform", rightPanel === tab.id && "scale-110")} />
-                  {tab.label}
-                  {tab.badge && tab.badge > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white status-blink border border-red-300/50">
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <div key={`right-${rightPanel}`} className="flex-1 overflow-hidden panel-fade">
-            {rightPanel === "instruments" && (
-              <div className="h-full overflow-y-auto p-3">
-                <InstrumentPanel />
-              </div>
+        {/* Right panel — Instruments / Safety / AI / Saves / Journal (collapsible) */}
+        <aside
+          className={cn(
+            "relative flex flex-shrink-0 flex-col sidebar-transition border-l border-slate-800/60 dotted-texture",
+            rightCollapsed ? "w-12 sidebar-rail sidebar-rail-right" : "w-96 bg-slate-950/50"
+          )}
+        >
+          {/* Floating toggle button on the border */}
+          <button
+            onClick={() => {
+              setRightCollapsed((v) => !v);
+              if (soundEnabled) getSoundManager().play("click");
+            }}
+            className={cn(
+              "sidebar-toggle-btn right",
+              rightCollapsed && "collapsed toggle-hint-pulse"
             )}
-            {rightPanel === "titration" && (
-              <div className="h-full overflow-y-auto p-3">
-                <TitrationSimulator />
+            title={rightCollapsed ? "Expand right panel ( ] )" : "Collapse right panel ( ] )"}
+          >
+            <PanelRightClose className="h-3.5 w-3.5" />
+          </button>
+
+          {/* Collapsed rail — icon-only vertical tabs */}
+          {rightCollapsed && (
+            <div className="sidebar-slide-in-right flex flex-col items-center gap-1.5 py-3">
+              {rightPanelTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      if (rightPanel === tab.id) {
+                        setRightCollapsed(false);
+                      } else {
+                        setRightPanel(tab.id);
+                        setRightCollapsed(false);
+                      }
+                      if (soundEnabled) getSoundManager().play("click");
+                    }}
+                    data-tooltip={tab.label}
+                    className={cn("rail-btn relative", rightPanel === tab.id && "active")}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.badge && tab.badge > 0 && (
+                      <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white status-blink border border-red-300/50">
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Expanded panel content */}
+          {!rightCollapsed && (
+            <div className="sidebar-expanded-content flex h-full flex-col">
+              {/* Right panel tabs */}
+              <div className="flex gap-1 border-b border-slate-800 bg-slate-950/80 p-2">
+                {rightPanelTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setRightPanel(tab.id)}
+                      className={cn(
+                        "tab-indicator tab-switch-smooth relative flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-[11px] font-medium",
+                        rightPanel === tab.id
+                          ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm shadow-emerald-500/30 tab-glow-active inner-sheen"
+                          : "text-slate-400 hover:bg-slate-800/60 hover:text-white hover:scale-105"
+                      )}
+                    >
+                      <Icon className={cn("h-3.5 w-3.5 transition-transform", rightPanel === tab.id && "scale-110")} />
+                      {tab.label}
+                      {tab.badge && tab.badge > 0 && (
+                        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white status-blink border border-red-300/50">
+                          {tab.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-            )}
-            {rightPanel === "safety" && (
-              <div className="h-full overflow-y-auto p-3">
-                <SafetyPanel />
+              <div key={`right-${rightPanel}`} className="flex-1 overflow-hidden panel-fade">
+                {rightPanel === "instruments" && (
+                  <div className="h-full overflow-y-auto p-3">
+                    <InstrumentPanel />
+                  </div>
+                )}
+                {rightPanel === "titration" && (
+                  <div className="h-full overflow-y-auto p-3">
+                    <TitrationSimulator />
+                  </div>
+                )}
+                {rightPanel === "safety" && (
+                  <div className="h-full overflow-y-auto p-3">
+                    <SafetyPanel />
+                  </div>
+                )}
+                {rightPanel === "assistant" && <AIAssistant />}
+                {rightPanel === "saves" && (
+                  <div className="h-full p-3">
+                    <SaveLoadPanel />
+                  </div>
+                )}
+                {rightPanel === "achievements" && (
+                  <div className="h-full p-3">
+                    <AchievementsPanel />
+                  </div>
+                )}
+                {rightPanel === "journal" && (
+                  <div className="h-full p-3">
+                    <LabJournal />
+                  </div>
+                )}
               </div>
-            )}
-            {rightPanel === "assistant" && <AIAssistant />}
-            {rightPanel === "saves" && (
-              <div className="h-full p-3">
-                <SaveLoadPanel />
-              </div>
-            )}
-            {rightPanel === "achievements" && (
-              <div className="h-full p-3">
-                <AchievementsPanel />
-              </div>
-            )}
-            {rightPanel === "journal" && (
-              <div className="h-full p-3">
-                <LabJournal />
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </aside>
       </div>
     </div>

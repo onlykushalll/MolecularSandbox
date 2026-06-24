@@ -1672,3 +1672,221 @@ input[type="range"].flame-slider::-moz-range-thumb {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(2px); }
 }
+
+/* ============================================
+   ROUND 10 — Sidebar Toggle + Design Elevation
+   ============================================ */
+
+/* Sidebar collapse/expand transitions — applies to width + opacity */
+.sidebar-transition {
+  transition: width 350ms cubic-bezier(0.32, 0.72, 0, 1),
+              opacity 200ms ease-out,
+              transform 350ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* When sidebar is collapsed, content fades + slides slightly */
+.sidebar-collapsed-content {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-8px);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+.sidebar-expanded-content {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+  transition: opacity 250ms ease-out 100ms, transform 250ms ease-out 100ms;
+}
+
+/* Collapsed rail — icon-only vertical strip */
+.sidebar-rail {
+  width: 48px;
+  background: linear-gradient(180deg, rgba(2,6,23,0.95) 0%, rgba(15,23,42,0.95) 100%);
+  border-right: 1px solid rgba(51, 65, 85, 0.5);
+  backdrop-filter: blur(12px);
+}
+.sidebar-rail-right {
+  border-right: none;
+  border-left: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+/* Rail icon buttons */
+.rail-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: rgb(148, 163, 184);
+  transition: all 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  cursor: pointer;
+}
+.rail-btn:hover {
+  background: rgba(30, 41, 59, 0.8);
+  color: rgb(226, 232, 240);
+  transform: scale(1.08);
+}
+.rail-btn.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.25));
+  color: rgb(52, 211, 153);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25), inset 0 0 0 1px rgba(52, 211, 153, 0.3);
+}
+.rail-btn.active::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, rgb(52, 211, 153), rgb(34, 211, 238));
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+}
+
+/* Tooltip on rail icons */
+.rail-btn[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgb(15, 23, 42);
+  color: rgb(226, 232, 240);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 100;
+  pointer-events: none;
+}
+.sidebar-rail-right .rail-btn[data-tooltip]:hover::after {
+  left: auto;
+  right: calc(100% + 10px);
+}
+
+/* Floating toggle button — sits on the panel border */
+.sidebar-toggle-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 44px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgb(15, 23, 42), rgb(30, 41, 59));
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  color: rgb(148, 163, 184);
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.sidebar-toggle-btn:hover {
+  background: linear-gradient(135deg, rgb(30, 41, 59), rgb(51, 65, 85));
+  color: rgb(52, 211, 153);
+  border-color: rgba(52, 211, 153, 0.5);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.3), 0 2px 8px rgba(0,0,0,0.3);
+  width: 26px;
+}
+.sidebar-toggle-btn.left { right: -11px; }
+.sidebar-toggle-btn.right { left: -11px; }
+.sidebar-toggle-btn svg {
+  transition: transform 250ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sidebar-toggle-btn.collapsed svg {
+  transform: rotate(180deg);
+}
+
+/* Focus / Zen mode — both sidebars hidden, 3D scene takes full width */
+.focus-mode-overlay {
+  pointer-events: none;
+}
+
+/* Smooth panel slide-in when expanding */
+@keyframes sidebar-slide-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes sidebar-slide-in-right {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.sidebar-slide-in { animation: sidebar-slide-in 300ms cubic-bezier(0.32, 0.72, 0, 1); }
+.sidebar-slide-in-right { animation: sidebar-slide-in-right 300ms cubic-bezier(0.32, 0.72, 0, 1); }
+
+/* Elevated glass panel — deeper, richer */
+.glass-elevated {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(2, 6, 23, 0.9) 100%);
+  backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(51, 65, 85, 0.4);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Header elevation — more depth */
+.header-elevated {
+  background: linear-gradient(135deg, rgba(2, 6, 23, 0.98) 0%, rgba(15, 23, 42, 0.98) 50%, rgba(2, 6, 23, 0.98) 100%);
+  backdrop-filter: blur(16px) saturate(1.3);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+/* Smooth tab transitions */
+.tab-switch-smooth {
+  transition: all 280ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Pulse for toggle hint */
+@keyframes toggle-hint-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+}
+.toggle-hint-pulse {
+  animation: toggle-hint-pulse 2s ease-in-out infinite;
+}
+
+/* Collapsed state badge — shows panel name briefly */
+.collapse-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgb(100, 116, 139);
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+/* Smooth width transition for main content */
+.main-content-transition {
+  transition: all 350ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Keyboard hint chip — for shortcuts */
+.kbd-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  border-bottom-width: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgb(148, 163, 184);
+  font-family: var(--font-mono, monospace);
+}
