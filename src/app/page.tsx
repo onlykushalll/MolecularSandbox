@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import {
   usePlayerStore,
@@ -39,6 +39,7 @@ const OrderingTerminalUI = dynamic(
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [flashKey, setFlashKey] = useState(0);
 
   const setMode = usePlayerStore((s) => s.setMode);
   const openOrderingTerminal = usePlayerStore((s) => s.openOrderingTerminal);
@@ -55,6 +56,7 @@ export default function Home() {
   const selectContainer = useLabStore((s) => s.selectContainer);
   const triggerReaction = useLabStore((s) => s.triggerReaction);
   const addChemicalToContainer = useLabStore((s) => s.addChemicalToContainer);
+  const lastReactionResult = useLabStore((s) => s.lastReactionResult);
 
   // === Load chemistry data + init starting chemicals ===
   useEffect(() => {
@@ -185,6 +187,27 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [loading]);
 
+  // === Reaction flash + toast feedback ===
+  const prevReactionRef = useRef<unknown>(null);
+  useEffect(() => {
+    if (lastReactionResult && lastReactionResult !== prevReactionRef.current) {
+      prevReactionRef.current = lastReactionResult;
+      setFlashKey((k) => k + 1);
+      const deltaT = lastReactionResult.temperatureChange;
+      const isExo = deltaT > 0;
+      const toastFn = isExo ? toast.success : toast.info;
+      toastFn("Reaction Complete!", {
+        description: `${lastReactionResult.reaction.equation} · ΔT = ${deltaT > 0 ? "+" : ""}${deltaT.toFixed(1)}°C${
+          lastReactionResult.gasEvolved ? " · 💨 Gas" : ""
+        }${
+          lastReactionResult.precipitateFormed ? " · ▼ Precipitate" : ""
+        }`,
+        duration: 4000,
+      });
+      getSoundManager().play("reaction");
+    }
+  }, [lastReactionResult]);
+
   // === Handle interactions ===
   const handleInteract = useCallback(
     (interactable: Interactable) => {
@@ -310,46 +333,84 @@ export default function Home() {
     [chemicals, openOrderingTerminal, setHeldItem, toggleBunsen, removeOwnedChemical, addChemicalToContainer, selectContainer]
   );
 
-  // === Q key to drop held item, T = terminal, B = Bunsen, P = PPE ===
+  // === Keyboard shortcuts ===
+  // Q=drop, T=terminal, B=bunsen, P=PPE, R=react, X=empty, 1/2/3=select beaker
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
         return;
       }
+      const labState = useLabStore.getState();
+      const playerState = usePlayerStore.getState();
+
       if (e.code === "KeyQ") {
-        const held = usePlayerStore.getState().heldItem;
+        const held = playerState.heldItem;
         if (held) {
           setHeldItem(null);
           toast.info("Put down item");
           getSoundManager().play("click");
         }
       } else if (e.code === "KeyT") {
-        // Toggle ordering terminal
-        const isOpen = usePlayerStore.getState().isOrderingTerminalOpen;
-        if (isOpen) {
-          usePlayerStore.getState().closeOrderingTerminal();
-        } else {
-          usePlayerStore.getState().openOrderingTerminal();
-        }
+        const isOpen = playerState.isOrderingTerminalOpen;
+        if (isOpen) usePlayerStore.getState().closeOrderingTerminal();
+        else usePlayerStore.getState().openOrderingTerminal();
         getSoundManager().play("click");
       } else if (e.code === "KeyB") {
-        // Toggle Bunsen
-        const isOn = usePlayerStore.getState().bunsenOn;
+        const isOn = playerState.bunsenOn;
         usePlayerStore.getState().toggleBunsen();
         toast.success(!isOn ? "🔥 Bunsen ignited" : "Bunsen off", {
           description: !isOn ? "Heating nearest beaker" : "Flame off",
         });
         getSoundManager().play("click");
       } else if (e.code === "KeyP") {
-        // Toggle all PPE
-        const ppe = usePlayerStore.getState().ppe;
+        const ppe = playerState.ppe;
         const allOn = ppe.coat && ppe.goggles && ppe.gloves;
         usePlayerStore.getState().setPPE({
           coat: !allOn, goggles: !allOn, gloves: !allOn, mask: !allOn,
         });
         toast.success(allOn ? "PPE removed" : "PPE equipped");
         getSoundManager().play("click");
+      } else if (e.code === "KeyR") {
+        // Trigger reaction on selected beaker
+        const sel = labState.selectedContainerId;
+        if (sel) {
+          const c = labState.containers.find((c) => c.id === sel);
+          if (c && c.contents.length > 0 && !c.isBroken) {
+            if (!playerState.hasRequiredPPE()) {
+              toast.error("⚠ Safety violation!", {
+                description: "Equip PPE first (press P)",
+              });
+              return;
+            }
+            labState.triggerReaction(sel);
+            toast.info("⚡ Triggering reaction...", { description: sel.toUpperCase() });
+            getSoundManager().play("click");
+          } else {
+            toast.error("Cannot react", { description: "Beaker is empty or broken" });
+          }
+        } else {
+          toast.error("No beaker selected", { description: "Look at a beaker and press E, or press 1/2/3" });
+        }
+      } else if (e.code === "KeyX") {
+        // Empty selected beaker
+        const sel = labState.selectedContainerId;
+        if (sel) {
+          labState.emptyContainer(sel);
+          toast.info("🗑 Beaker emptied", { description: sel.toUpperCase() });
+          getSoundManager().play("click");
+        } else {
+          toast.error("No beaker selected", { description: "Press 1/2/3 to select" });
+        }
+      } else if (e.code === "Digit1" || e.code === "Digit2" || e.code === "Digit3") {
+        // Select beaker 1/2/3
+        const idx = parseInt(e.code.replace("Digit", "")) - 1;
+        const c = labState.containers[idx];
+        if (c) {
+          labState.selectContainer(c.id);
+          toast.info("Selected", { description: c.id.toUpperCase() });
+          getSoundManager().play("click");
+        }
       }
     };
     window.addEventListener("keydown", handler);
@@ -397,6 +458,16 @@ export default function Home() {
       <FirstPersonScene onInteract={handleInteract} />
       <FPHUD />
       <OrderingTerminalUI />
+      {/* Reaction flash overlay */}
+      <div
+        key={flashKey}
+        className="pointer-events-none absolute inset-0 z-40"
+        style={{
+          background:
+            "radial-gradient(circle at center, rgba(34, 197, 94, 0.18) 0%, transparent 70%)",
+          animation: "flash 0.6s ease-out",
+        }}
+      />
     </div>
   );
 }
