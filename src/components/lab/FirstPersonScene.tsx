@@ -9,14 +9,33 @@ import { InteractionSystem } from "./InteractionSystem";
 import { PlayerBody } from "./PlayerBody";
 import { LabRoom } from "./LabRoom";
 import { LabFurniture } from "./LabFurniture";
+import { BenchBeaker } from "./BenchBeaker";
+import { ChemicalShelfRack } from "./ChemicalShelfRack";
+import { BenchBunsenBurner } from "./BenchBunsenBurner";
+import { useLabStore } from "@/lib/store/lab-store";
 import type { Interactable } from "@/lib/store/player-store";
+
+function SceneContents() {
+  const containers = useLabStore((s) => s.containers);
+  return (
+    <>
+      <LabFurniture />
+      {/* Beakers on main bench */}
+      {containers.map((c) => (
+        <BenchBeaker key={c.id} container={c} />
+      ))}
+      {/* Chemical bottles on shelf */}
+      <ChemicalShelfRack />
+      {/* Bunsen burner on main bench */}
+      <BenchBunsenBurner position={[-2.5, 0.99, 0.3]} />
+    </>
+  );
+}
 
 function Lighting() {
   return (
     <>
-      {/* Ambient fill — bright modern lab */}
       <ambientLight intensity={0.8} color="#ffffff" />
-      {/* Main overhead fluorescent */}
       <directionalLight
         position={[0, 10, 0]}
         intensity={1.0}
@@ -28,10 +47,8 @@ function Lighting() {
         shadow-camera-bottom={10}
         shadow-bias={-0.0001}
       />
-      {/* Fill lights from windows */}
       <directionalLight position={[8, 4, 0]} intensity={0.3} color="#aaccff" />
       <directionalLight position={[-8, 4, 0]} intensity={0.2} color="#ffd4a0" />
-      {/* Warm point lights near benches */}
       <pointLight position={[0, 2.5, 0]} intensity={0.3} color="#ffffff" distance={6} />
       <pointLight position={[-6, 2.5, -3.9]} intensity={0.2} color="#ffffff" distance={4} />
     </>
@@ -61,10 +78,9 @@ export function FirstPersonScene({
       style={{ background: "#0a0e14" }}
     >
       <Lighting />
-
       <Suspense fallback={null}>
         <LabRoom />
-        <LabFurniture />
+        <SceneContents />
         <ContactShadows
           position={[0, 0.01, 0]}
           opacity={0.3}
@@ -75,7 +91,6 @@ export function FirstPersonScene({
         />
         <Environment preset="studio" />
       </Suspense>
-
       <FirstPersonController />
       <InteractionSystem onInteract={onInteract} />
       <PlayerBody />

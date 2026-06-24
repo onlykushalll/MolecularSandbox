@@ -3,11 +3,14 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { usePlayerStore, type Interactable } from "@/lib/store/player-store";
+import {
+  usePlayerStore,
+  initStartingChemicals,
+  type Interactable,
+} from "@/lib/store/player-store";
 import { useLabStore } from "@/lib/store/lab-store";
 import { getSoundManager } from "@/lib/sound/sound-manager";
 
-// Dynamically import the 3D scene (SSR disabled)
 const FirstPersonScene = dynamic(
   () => import("@/components/lab/FirstPersonScene").then((m) => m.FirstPersonScene),
   {
@@ -28,22 +31,32 @@ const FPHUD = dynamic(
   { ssr: false }
 );
 
+const OrderingTerminalUI = dynamic(
+  () => import("@/components/lab/OrderingTerminalUI").then((m) => m.OrderingTerminalUI),
+  { ssr: false }
+);
+
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Player store
   const setMode = usePlayerStore((s) => s.setMode);
-  const togglePPE = usePlayerStore((s) => s.togglePPE);
-  const setHeldItem = usePlayerStore((s) => s.setHeldItem);
   const openOrderingTerminal = usePlayerStore((s) => s.openOrderingTerminal);
+  const setHeldItem = usePlayerStore((s) => s.setHeldItem);
+  const togglePPE = usePlayerStore((s) => s.togglePPE);
+  const toggleBunsen = usePlayerStore((s) => s.toggleBunsen);
+  const removeOwnedChemical = usePlayerStore((s) => s.removeOwnedChemical);
 
-  // Lab store (chemistry)
   const initializeLab = useLabStore((s) => s.initializeLab);
   const chemicals = useLabStore((s) => s.chemicals);
   const reactions = useLabStore((s) => s.reactions);
+  const heatingTick = useLabStore((s) => s.heatingTick);
+  const setContainerHeating = useLabStore((s) => s.setContainerHeating);
+  const selectContainer = useLabStore((s) => s.selectContainer);
+  const triggerReaction = useLabStore((s) => s.triggerReaction);
+  const addChemicalToContainer = useLabStore((s) => s.addChemicalToContainer);
 
-  // === Load chemistry data on mount ===
+  // === Load chemistry data + init starting chemicals ===
   useEffect(() => {
     async function load() {
       try {
@@ -55,7 +68,6 @@ export default function Home() {
         const chemData = await chemRes.json();
         const rxnData = await rxnRes.json();
 
-        // Initialize lab store with 3 beakers on the main bench
         const containers = [
           {
             id: "beaker-1",
@@ -101,9 +113,11 @@ export default function Home() {
           },
         ];
         initializeLab(chemData, rxnData, containers);
+        // Give player starting chemicals on the shelf
+        initStartingChemicals(chemData);
         setLoading(false);
         toast.success("Lab initialized", {
-          description: `${chemData.length} chemicals · ${rxnData.length} reactions`,
+          description: `${chemData.length} chemicals · ${rxnData.length} reactions · 15 starter chemicals on shelf`,
         });
       } catch (e) {
         console.error(e);
@@ -119,7 +133,34 @@ export default function Home() {
     setMode("first-person");
   }, [setMode]);
 
-  // === Delivery check loop — check for pending orders that should be delivered ===
+  // === Heating tick (every 500ms) ===
+  useEffect(() => {
+    if (loading) return;
+    const interval = setInterval(() => {
+      heatingTick();
+    }, 500);
+    return () => clearInterval(interval);
+  }, [loading, heatingTick]);
+
+  // === Bunsen burner heating — when on, heat nearest beaker ===
+  useEffect(() => {
+    if (loading) return;
+    const interval = setInterval(() => {
+      const bunsenOn = usePlayerStore.getState().bunsenOn;
+      const containers = useLabStore.getState().containers;
+      // Bunsen is at [-2.5, 0.99, 0.3], nearest beaker is beaker-1 at [-1.5, 1.0, 0]
+      const nearestBeaker = containers[0]; // beaker-1
+      if (nearestBeaker) {
+        const shouldHeat = bunsenOn;
+        if (nearestBeaker.isHeating !== shouldHeat) {
+          setContainerHeating(nearestBeaker.id, shouldHeat);
+        }
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [loading, setContainerHeating]);
+
+  // === Delivery check loop ===
   useEffect(() => {
     if (loading) return;
     const interval = setInterval(() => {
@@ -128,7 +169,6 @@ export default function Home() {
       const pending = state.orders.filter((o) => o.status === "pending");
       for (const order of pending) {
         const elapsed = (now - order.orderedAt) / 1000;
-        // Delivery takes 20-45 seconds based on order id hash
         const seed = order.id.charCodeAt(order.id.length - 1) % 26;
         const deliveryTime = 20 + seed;
         if (elapsed >= deliveryTime) {
@@ -136,12 +176,9 @@ export default function Home() {
           state.addOwnedChemical(order.chemicalId, order.quantity);
           state.placeOnShelf(order.chemicalId);
           toast.success("📦 Delivery arrived!", {
-            description: `${order.chemicalName} (${order.quantity}mL) is now on the shelf`,
+            description: `${order.chemicalName} is now on the shelf`,
             duration: 5000,
           });
-          if (usePlayerStore.getState().heldItem === null) {
-            // Auto-pickup if hand is empty? No — let player grab it from shelf
-          }
         }
       }
     }, 1000);
@@ -152,10 +189,11 @@ export default function Home() {
   const handleInteract = useCallback(
     (interactable: Interactable) => {
       const sm = getSoundManager();
+      const playerState = usePlayerStore.getState();
+
       switch (interactable.kind) {
-        case "safety-station":
-          // Toggle all PPE at once (simple for now)
-          const ppe = usePlayerStore.getState().ppe;
+        case "safety-station": {
+          const ppe = playerState.ppe;
           const allOn = ppe.coat && ppe.goggles && ppe.gloves;
           usePlayerStore.getState().setPPE({
             coat: !allOn,
@@ -164,26 +202,28 @@ export default function Home() {
             mask: !allOn,
           });
           toast.success(allOn ? "PPE removed" : "PPE equipped", {
-            description: allOn
-              ? "You are now unprotected"
-              : "Coat, goggles, gloves, mask equipped",
+            description: allOn ? "You are now unprotected" : "Coat + goggles + gloves + mask",
           });
           sm.play("click");
           break;
+        }
 
         case "ordering-terminal":
           openOrderingTerminal();
           sm.play("click");
-          toast.info("Ordering Terminal", {
-            description: "Browse and order chemicals — deliveries arrive in 20-45s",
-          });
           break;
 
-        case "chemical-bottle":
-          // Pick up the bottle
+        case "chemical-bottle": {
           if (interactable.chemicalId) {
             const chem = chemicals.find((c) => c.id === interactable.chemicalId);
             if (chem) {
+              // If already holding something, swap (put down current, pick up new)
+              if (playerState.heldItem) {
+                toast.info("Put down current item first", {
+                  description: "Press Q to drop held item",
+                });
+                return;
+              }
               setHeldItem({
                 type: "chemical",
                 chemicalId: chem.id,
@@ -196,15 +236,14 @@ export default function Home() {
             }
           }
           break;
+        }
 
-        case "beaker":
-          // If holding a chemical, pour it into this beaker
-          const heldItem = usePlayerStore.getState().heldItem;
+        case "beaker": {
+          const heldItem = playerState.heldItem;
           if (heldItem && heldItem.type === "chemical") {
             // Check PPE requirement
-            const hasPPE = usePlayerStore.getState().hasRequiredPPE();
-            if (!hasPPE) {
-              toast.error("Safety violation!", {
+            if (!playerState.hasRequiredPPE()) {
+              toast.error("⚠ Safety violation!", {
                 description: "Equip coat + goggles + gloves at the safety station first",
                 duration: 4000,
               });
@@ -212,62 +251,116 @@ export default function Home() {
             }
             const containerId = interactable.containerId;
             if (containerId) {
-              useLabStore
-                .getState()
-                .addChemicalToContainer(containerId, heldItem.chemicalId, heldItem.volume, true);
+              // Pour into beaker
+              addChemicalToContainer(containerId, heldItem.chemicalId, heldItem.volume, true);
+              // Deduct from owned chemicals
+              removeOwnedChemical(heldItem.chemicalId, heldItem.volume);
               toast.success("Poured into beaker", {
-                description: `${heldItem.volume}mL added · auto-react enabled`,
+                description: `${heldItem.volume}mL added · auto-react on`,
               });
               sm.play("pour");
               setHeldItem(null);
             }
           } else {
-            // Select the beaker (for reactions)
+            // Select beaker
             if (interactable.containerId) {
-              useLabStore.getState().selectContainer(interactable.containerId);
+              selectContainer(interactable.containerId);
+              const container = useLabStore.getState().containers.find(c => c.id === interactable.containerId);
               toast.info("Beaker selected", {
-                description: interactable.containerId.toUpperCase(),
+                description: container
+                  ? `${container.id.toUpperCase()} · ${container.contents.length} contents · ${container.temperature.toFixed(0)}°C`
+                  : interactable.containerId.toUpperCase(),
               });
               sm.play("click");
             }
           }
           break;
+        }
 
         case "sink":
-          // Get water
           setHeldItem({
             type: "chemical",
             chemicalId: chemicals.find((c) => c.name === "Water")?.id || "",
             volume: 50,
           });
-          toast.success("Filled with water", {
-            description: "50mL tap water",
-          });
+          toast.success("Filled with water", { description: "50mL tap water" });
           sm.play("pour");
           break;
 
         case "bunsen-burner":
-          toast.info("Bunsen burner", {
-            description: "Heating controls coming in Phase 3",
+          toggleBunsen();
+          const isOn = !playerState.bunsenOn;
+          toast.success(isOn ? "🔥 Bunsen ignited" : "Bunsen turned off", {
+            description: isOn ? "Heating nearest beaker" : "Flame extinguished",
           });
-          sm.play("click");
+          sm.play(isOn ? "click" : "click");
           break;
 
         case "fume-hood":
-          toast.info("Fume hood", {
-            description: "Move dangerous reactions here (coming Phase 3)",
+          toast.info("Fume Hood", {
+            description: "Move dangerous reactions here — coming in Phase 4",
           });
           sm.play("click");
           break;
 
         default:
-          toast.info(interactable.label, {
-            description: interactable.action,
-          });
+          toast.info(interactable.label, { description: interactable.action });
       }
     },
-    [chemicals, openOrderingTerminal, setHeldItem]
+    [chemicals, openOrderingTerminal, setHeldItem, toggleBunsen, removeOwnedChemical, addChemicalToContainer, selectContainer]
   );
+
+  // === Q key to drop held item, T = terminal, B = Bunsen, P = PPE ===
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      if (e.code === "KeyQ") {
+        const held = usePlayerStore.getState().heldItem;
+        if (held) {
+          setHeldItem(null);
+          toast.info("Put down item");
+          getSoundManager().play("click");
+        }
+      } else if (e.code === "KeyT") {
+        // Toggle ordering terminal
+        const isOpen = usePlayerStore.getState().isOrderingTerminalOpen;
+        if (isOpen) {
+          usePlayerStore.getState().closeOrderingTerminal();
+        } else {
+          usePlayerStore.getState().openOrderingTerminal();
+        }
+        getSoundManager().play("click");
+      } else if (e.code === "KeyB") {
+        // Toggle Bunsen
+        const isOn = usePlayerStore.getState().bunsenOn;
+        usePlayerStore.getState().toggleBunsen();
+        toast.success(!isOn ? "🔥 Bunsen ignited" : "Bunsen off", {
+          description: !isOn ? "Heating nearest beaker" : "Flame off",
+        });
+        getSoundManager().play("click");
+      } else if (e.code === "KeyP") {
+        // Toggle all PPE
+        const ppe = usePlayerStore.getState().ppe;
+        const allOn = ppe.coat && ppe.goggles && ppe.gloves;
+        usePlayerStore.getState().setPPE({
+          coat: !allOn, goggles: !allOn, gloves: !allOn, mask: !allOn,
+        });
+        toast.success(allOn ? "PPE removed" : "PPE equipped");
+        getSoundManager().play("click");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [setHeldItem]);
+
+  // === Expose stores for debugging ===
+  useEffect(() => {
+    (window as any).__playerStore = usePlayerStore;
+    (window as any).__labStore = useLabStore;
+  }, []);
 
   if (loading) {
     return (
@@ -303,6 +396,7 @@ export default function Home() {
     <div className="fixed inset-0 overflow-hidden bg-slate-950">
       <FirstPersonScene onInteract={handleInteract} />
       <FPHUD />
+      <OrderingTerminalUI />
     </div>
   );
 }

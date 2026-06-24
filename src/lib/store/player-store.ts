@@ -93,6 +93,10 @@ interface PlayerState {
   ownedChemicals: Map<string, number>; // chemicalId -> volume (mL or g)
   shelfChemicals: string[]; // chemicalIds currently placed on the shelf
 
+  // === Bunsen burner ===
+  bunsenOn: boolean;
+  toggleBunsen: () => void;
+
   // === Actions ===
   setPosition: (pos: [number, number, number]) => void;
   setRotation: (rot: [number, number]) => void;
@@ -203,6 +207,7 @@ const initialState = {
   isOrderingTerminalOpen: false,
   ownedChemicals: new Map<string, number>(),
   shelfChemicals: [] as string[],
+  bunsenOn: false,
 };
 
 // === AABB collision check ===
@@ -348,5 +353,30 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       shelfChemicals: s.shelfChemicals.filter((c) => c !== chemicalId),
     })),
 
+  toggleBunsen: () => set((s) => ({ bunsenOn: !s.bunsenOn })),
+
   resetPlayer: () => set({ ...initialState, showStartScreen: false }),
 }));
+
+// === Helper: initialize starting chemicals (free lab stock) ===
+export function initStartingChemicals(chemicals: Array<{ id: string; name: string }>) {
+  const starterNames = [
+    "Water", "Hydrochloric Acid", "Sodium Hydroxide", "Sodium Chloride",
+    "Copper Sulfate", "Iron", "Hydrogen Peroxide", "Sodium Bicarbonate",
+    "Calcium Carbonate", "Sulfuric Acid", "Ethanol", "Acetic Acid",
+    "Ammonia", "Zinc", "Phenolphthalein",
+  ];
+  const newOwned = new Map<string, number>();
+  const newShelf: string[] = [];
+  for (const name of starterNames) {
+    const chem = chemicals.find((c) => c.name === name);
+    if (chem) {
+      newOwned.set(chem.id, 100);
+      newShelf.push(chem.id);
+    }
+  }
+  usePlayerStore.setState({
+    ownedChemicals: newOwned,
+    shelfChemicals: newShelf,
+  });
+}
