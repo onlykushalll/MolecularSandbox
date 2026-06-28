@@ -83,60 +83,48 @@ export function InteractionSystem({
     }
   });
 
-  // === Handle LEFT-CLICK = interact/use (E key also works) ===
+  // === Handle interaction (E key or click) ===
   const handleInteract = useCallback(() => {
     if (interactCooldown.current > 0) return;
     const current = usePlayerStore.getState().hoveredInteractable;
     if (!current) return;
-    interactCooldown.current = 0.3;
+    interactCooldown.current = 0.3; // 300ms cooldown
     const sm = getSoundManager();
     sm.play("click");
-    onInteract?.(current);
-  }, [onInteract]);
-
-  // === Handle RIGHT-CLICK = pick up / grab ===
-  const handlePickup = useCallback(() => {
-    if (interactCooldown.current > 0) return;
-    const current = usePlayerStore.getState().hoveredInteractable;
-    if (!current) return;
-    interactCooldown.current = 0.3;
-    const sm = getSoundManager();
-    sm.play("click");
-    // For bottles: pick up. For beakers: select. For others: same as interact
     onInteract?.(current);
   }, [onInteract]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
       if (e.code === "KeyE" || e.code === "Enter") {
         e.preventDefault();
         handleInteract();
       }
     };
     const onMouseDown = (e: MouseEvent) => {
-      if (!document.pointerLockElement) return;
       if (e.button === 0) {
-        // LEFT-CLICK = interact/use
-        handleInteract();
-      } else if (e.button === 2) {
-        // RIGHT-CLICK = pick up / grab
-        e.preventDefault();
-        handlePickup();
+        // left click — only if pointer locked
+        if (document.pointerLockElement) {
+          handleInteract();
+        }
       }
     };
-    // Prevent context menu on right-click
-    const onContextMenu = (e: MouseEvent) => { e.preventDefault(); };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("contextmenu", onContextMenu);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [handleInteract, handlePickup]);
+  }, [handleInteract]);
 
   return null;
 }

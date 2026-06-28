@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { usePlayerStore } from "@/lib/store/player-store";
 import { useLabStore } from "@/lib/store/lab-store";
-import { ChemicalBottle } from "./ChemicalBottle";
+import { RealReagentBottle } from "./RealModels";
 
 /**
  * ChemicalShelfRack — renders all owned chemical bottles on the shelf cabinet
@@ -49,7 +49,7 @@ export function ChemicalShelfRack() {
         const chem = chemicalsMap.get(chemicalId);
         if (!chem) return null;
         return (
-          <ChemicalBottle
+          <RealReagentBottle
             key={chemicalId}
             chemical={chem}
             position={pos}

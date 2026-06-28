@@ -97,6 +97,10 @@ interface PlayerState {
   bunsenOn: boolean;
   toggleBunsen: () => void;
 
+  // === Hot plate ===
+  hotPlateOn: boolean;
+  toggleHotPlate: () => void;
+
   // === Actions ===
   setPosition: (pos: [number, number, number]) => void;
   setRotation: (rot: [number, number]) => void;
@@ -208,6 +212,7 @@ const initialState = {
   ownedChemicals: new Map<string, number>(),
   shelfChemicals: [] as string[],
   bunsenOn: false,
+  hotPlateOn: false,
 };
 
 // === AABB collision check ===
@@ -354,6 +359,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     })),
 
   toggleBunsen: () => set((s) => ({ bunsenOn: !s.bunsenOn })),
+
+  toggleHotPlate: () => set((s) => ({ hotPlateOn: !s.hotPlateOn })),
 
   resetPlayer: () => set({ ...initialState, showStartScreen: false }),
 }));
