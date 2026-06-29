@@ -40,6 +40,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flashKey, setFlashKey] = useState(0);
+  const [sceneReady, setSceneReady] = useState(false);
 
   const setMode = usePlayerStore((s) => s.setMode);
   const openOrderingTerminal = usePlayerStore((s) => s.openOrderingTerminal);
@@ -455,19 +456,21 @@ export default function Home() {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-slate-950">
-      <FirstPersonScene onInteract={handleInteract} />
-      <FPHUD />
+      {sceneReady && <FirstPersonScene onInteract={handleInteract} />}
+      <FPHUD onEnterLab={() => setSceneReady(true)} />
       <OrderingTerminalUI />
       {/* Reaction flash overlay */}
-      <div
-        key={flashKey}
-        className="pointer-events-none absolute inset-0 z-40"
-        style={{
-          background:
-            "radial-gradient(circle at center, rgba(34, 197, 94, 0.18) 0%, transparent 70%)",
-          animation: "flash 0.6s ease-out",
-        }}
-      />
+      {sceneReady && (
+        <div
+          key={flashKey}
+          className="pointer-events-none absolute inset-0 z-40"
+          style={{
+            background:
+              "radial-gradient(circle at center, rgba(34, 197, 94, 0.18) 0%, transparent 70%)",
+            animation: "flash 0.6s ease-out",
+          }}
+        />
+      )}
     </div>
   );
 }
