@@ -37,7 +37,11 @@ function Loaded({ url, position, rotation, scale }: { url:string; position:[numb
     const size = box.getSize(new THREE.Vector3());
     const max = Math.max(size.x, size.y, size.z);
     const s = max > 0 ? scale/max : scale;
-    c.position.sub(center.multiplyScalar(s));
+    // Ground at true base (min Y), center on X/Z. Previously centered on all 3 axes,
+    // which floated/sank every model instead of sitting it on the surface at position.y.
+    c.position.x = -center.x * s;
+    c.position.z = -center.z * s;
+    c.position.y = -box.min.y * s;
     c.scale.setScalar(s);
     c.traverse((ch) => { if (ch instanceof THREE.Mesh) { ch.castShadow = true; ch.receiveShadow = true; } });
     return c;
@@ -56,7 +60,7 @@ export function RealLabBench({ position = [0,0,0] as [number,number,number] }) {
 }
 export function RealSafetyCabinet({ position = [-7,0,-2] as [number,number,number] }) {
   const i: Interactable = { id:"safety-cabinet", kind:"storage-shelf", label:"Flammable Storage", position, action:"Store flammables" };
-  return <InteractableMesh interactable={i} highlightColor="#f59e0b"><LazyModel url="/models/06_safety_cabinet_yellow.glb" position={position} scale={1} renderDistance={6} /></InteractableMesh>;
+  return <InteractableMesh interactable={i} highlightColor="#f59e0b"><LazyModel url="/models/06_safety_cabinet_yellow.glb" position={position} scale={1.8} renderDistance={6} /></InteractableMesh>;
 }
 export function RealBunsenBurner({ position = [-1,1,0.3] as [number,number,number] }) {
   const isOn = usePlayerStore(s=>s.bunsenOn);
@@ -66,7 +70,7 @@ export function RealBunsenBurner({ position = [-1,1,0.3] as [number,number,numbe
 export function RealHotPlate({ position = [-2.5,1,-0.3] as [number,number,number] }) {
   const isOn = usePlayerStore(s=>s.hotPlateOn);
   const i: Interactable = { id:"hot-plate", kind:"bunsen-burner", label:"Hot Plate", position, action: isOn?"Turn off":"Turn on" };
-  return <InteractableMesh interactable={i} highlightColor="#f59e0b"><LazyModel url="/models/02_hot_plate_magnetic_stirrer.glb" position={position} scale={0.2} renderDistance={4} />{isOn&&<pointLight position={[position[0],position[1]+0.03,position[2]]} color="#ff3300" intensity={0.3} distance={0.3} />}</InteractableMesh>;
+  return <InteractableMesh interactable={i} highlightColor="#f59e0b"><LazyModel url="/models/02_hot_plate_magnetic_stirrer.glb" position={position} scale={0.25} renderDistance={4} />{isOn&&<pointLight position={[position[0],position[1]+0.03,position[2]]} color="#ff3300" intensity={0.3} distance={0.3} />}</InteractableMesh>;
 }
 export function RealAnalyticalBalance({ position = [2.5,1,0.5] as [number,number,number] }) {
   const sel = useLabStore(s=>s.selectedContainerId);
@@ -74,24 +78,24 @@ export function RealAnalyticalBalance({ position = [2.5,1,0.5] as [number,number
   const hov = usePlayerStore(s=>s.hoveredInteractable?.id);
   const mass = useMemo(() => { if(!sel) return 0; const c=containers.find(c=>c.id===sel); return c?c.contents.reduce((s,cc)=>s+cc.moles,0)*100:0; }, [sel,containers]);
   const i: Interactable = { id:"analytical-balance", kind:"apparatus" as any, label:"Balance", position, action:`Mass: ${mass.toFixed(3)}g` };
-  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/04_analytical_balance.glb" position={position} scale={0.25} renderDistance={4} />{hov==="analytical-balance"&&<Html position={[position[0],position[1]+0.12,position[2]]} center distanceFactor={3} occlude><div className="rounded bg-black/80 px-2 py-1 font-mono text-xs font-bold text-cyan-300">{mass.toFixed(3)} g</div></Html>}</InteractableMesh>;
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/04_analytical_balance.glb" position={position} scale={0.3} renderDistance={4} />{hov==="analytical-balance"&&<Html position={[position[0],position[1]+0.12,position[2]]} center distanceFactor={3} occlude><div className="rounded bg-black/80 px-2 py-1 font-mono text-xs font-bold text-cyan-300">{mass.toFixed(3)} g</div></Html>}</InteractableMesh>;
 }
 export function RealRingStand({ position = [2.5,1,-0.5] as [number,number,number] }) {
-  return <LazyModel url="/models/03_ring_retort_stand.glb" position={position} scale={0.3} renderDistance={4} />;
+  return <LazyModel url="/models/03_ring_retort_stand.glb" position={position} scale={0.6} renderDistance={4} />;
 }
 export function RealBurette({ position = [2.5,1.5,-0.3] as [number,number,number] }) {
-  return <LazyModel url="/models/05_burette_50ml.glb" position={position} scale={0.2} renderDistance={4} />;
+  return <LazyModel url="/models/05_burette_50ml.glb" position={position} scale={0.45} renderDistance={4} />;
 }
 export function RealCentrifuge({ position = [3,1,-0.5] as [number,number,number] }) {
   const i: Interactable = { id:"centrifuge", kind:"apparatus" as any, label:"Centrifuge", position, action:"Toggle" };
-  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/13_centrifuge.glb" position={position} scale={0.25} renderDistance={4} /></InteractableMesh>;
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/13_centrifuge.glb" position={position} scale={0.3} renderDistance={4} /></InteractableMesh>;
 }
 export function RealDesiccator({ position = [-2,1,-0.5] as [number,number,number] }) {
-  return <LazyModel url="/models/12_desiccator.glb" position={position} scale={0.15} renderDistance={4} />;
+  return <LazyModel url="/models/12_desiccator.glb" position={position} scale={0.206} renderDistance={4} />;
 }
 export function RealLabCoat({ position = [-6.5,1,4.5] as [number,number,number] }) {
   const i: Interactable = { id:"lab-coat", kind:"safety-station", label:"Lab Coat", position, action:"Put on coat" };
-  return <InteractableMesh interactable={i} highlightColor="#22c55e"><LazyModel url="/models/07_lab_coat_hanging.glb" position={position} scale={0.4} renderDistance={6} /></InteractableMesh>;
+  return <InteractableMesh interactable={i} highlightColor="#22c55e"><LazyModel url="/models/07_lab_coat_hanging.glb" position={position} scale={1.306} renderDistance={6} /></InteractableMesh>;
 }
 
 // === BEAKER (procedural, lightweight, always renders) ===
@@ -125,16 +129,19 @@ export function RealBeaker({ container }: { container: any }) {
 }
 
 // === REAGENT BOTTLE ===
-export function RealReagentBottle({ chemical, position }: { chemical: any; position: [number,number,number] }) {
+export function RealReagentBottle({ chemical, position, index=0 }: { chemical: any; position: [number,number,number]; index?: number }) {
   const held = usePlayerStore(s=>s.heldItem);
   const isHeld = held?.type==="chemical"&&held.chemicalId===chemical.id;
   const hov = usePlayerStore(s=>s.hoveredInteractable?.id);
   const isHov = hov === `bottle-${chemical.id}`;
   const i: Interactable = { id:`bottle-${chemical.id}`, kind:"chemical-bottle", label:`${chemical.name} (${chemical.formula})`, position, chemicalId:chemical.id, action: isHeld?"Put down":`Pick up ${chemical.name}` };
   if (isHeld) return null;
+  // Small deterministic per-bottle rotation seeded by shelf index — a full shelf of bottles
+  // all facing identically reads as a robotic grid, not a real stocked shelf.
+  const jitterY = ((index * 37) % 11 - 5) * 0.025;
   return <InteractableMesh interactable={i} highlightColor="#f59e0b">
-    <group position={position}>
-      <LazyModel url="/models/01_reagent_bottle_100ml.glb" position={[0,0,0]} scale={0.12} renderDistance={4} />
+    <group position={position} rotation={[0, jitterY, 0]}>
+      <LazyModel url="/models/01_reagent_bottle_100ml.glb" position={[0,0,0]} scale={0.095} renderDistance={4} />
       <mesh position={[0,0.06,0]}><sphereGeometry args={[0.006,8,8]} /><meshStandardMaterial color={chemical.hexColor} emissive={chemical.hexColor} emissiveIntensity={0.3} /></mesh>
       {isHov&&<Html position={[0,0.1,0]} center distanceFactor={3} occlude><div className="rounded-md border border-amber-500/50 bg-slate-950/90 px-2 py-1 backdrop-blur-md"><div className="text-[11px] font-bold text-amber-300">{chemical.name}</div><div className="font-mono text-[9px] text-slate-400">{chemical.formula}</div><div className="text-[8px] text-emerald-400">[E] to pick up</div></div></Html>}
     </group>
