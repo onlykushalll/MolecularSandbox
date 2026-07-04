@@ -36,7 +36,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts
@@ -59,3 +58,10 @@ server.log
 
 # downloads / QA screenshots
 /download/
+
+# pre-optimization model backup (kept locally, not in repo)
+/public/models_backup_pretextfix/
+
+/public/test_ignore_dummy/
+
+/public/test_ignore_dummy/
