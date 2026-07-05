@@ -28,23 +28,16 @@ export function FPHUD({ onEnterLab }: { onEnterLab?: () => void }) {
   const setStartScreen = usePlayerStore((s) => s.setStartScreen);
   const setMode = usePlayerStore((s) => s.setMode);
 
-  const [showHints, setShowHints] = useState(false);
   const [hintTimer, setHintTimer] = useState(0);
+  const showHints = !showStartScreen && mode === "first-person" && hintTimer < 10;
 
-  // Show hints for first 10 seconds after entering lab
+  // Advance the hint timer for the first 10 seconds after entering the lab.
+  // No direct setState calls in the effect body itself — only inside the
+  // interval callback, via the functional updater form.
   useEffect(() => {
     if (!showStartScreen && mode === "first-person") {
-      setShowHints(true);
-      setHintTimer(0);
       const interval = setInterval(() => {
-        setHintTimer((t) => {
-          if (t >= 10) {
-            setShowHints(false);
-            clearInterval(interval);
-            return 0;
-          }
-          return t + 1;
-        });
+        setHintTimer((t) => (t >= 10 ? t : t + 1));
       }, 1000);
       return () => clearInterval(interval);
     }
