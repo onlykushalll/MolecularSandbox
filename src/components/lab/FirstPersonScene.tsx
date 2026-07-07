@@ -18,6 +18,8 @@ import {
   RealFumeHood, RealLabBench, RealBunsenBurner, RealBeaker,
   RealReagentBottle, RealAnalyticalBalance, RealHotPlate, RealRingStand,
   RealSafetyCabinet, RealLabCoat, RealBurette, RealCentrifuge, RealDesiccator,
+  RealTestTubeRack, RealGraduatedCylinder, RealFunnel, RealWashBottle,
+  RealMechanicalPipette, RealButchnerFunnel, RealSeparatoryFunnel,
   preloadAllModels,
 } from "./RealModels";
 import { ChemicalShelfRack } from "./ChemicalShelfRack";
@@ -43,6 +45,13 @@ function SceneContents() {
       <RealBurette position={[2.5, 1.5, -0.3]} />
       <RealCentrifuge position={[3, 1.0, -0.5]} />
       <RealDesiccator position={[-2, 1.0, -0.5]} />
+      <RealTestTubeRack position={[0.3, 1.0, 0.5]} />
+      <RealGraduatedCylinder position={[0.7, 1.0, 0.3]} />
+      <RealFunnel position={[0.9, 1.0, 0.5]} />
+      <RealWashBottle position={[1.1, 1.0, 0.5]} />
+      <RealMechanicalPipette position={[0.5, 1.0, 0.3]} />
+      <RealButchnerFunnel position={[-1.5, 1.0, -0.7]} />
+      <RealSeparatoryFunnel position={[-1.8, 1.0, -0.7]} />
 
       {/* === SAFETY === */}
       <RealLabCoat position={[-6.5, 1.0, 4.5]} />

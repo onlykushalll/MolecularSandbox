@@ -10,8 +10,8 @@ import { InteractableMesh } from "./InteractableMesh";
 import { mixHexColors } from "@/lib/chemistry/mixture";
 
 // LazyModel — only loads GLB when player is within renderDistance
-function LazyModel({ url, position, rotation = [0,0,0] as [number,number,number], scale = 1, renderDistance = 5 }: {
-  url: string; position: [number,number,number]; rotation?: [number,number,number]; scale?: number; renderDistance?: number;
+function LazyModel({ url, position, rotation = [0,0,0] as [number,number,number], scale = 1, scaleXYZ, renderDistance = 5 }: {
+  url: string; position: [number,number,number]; rotation?: [number,number,number]; scale?: number; scaleXYZ?: [number,number,number]; renderDistance?: number;
 }) {
   const [load, setLoad] = useState(false);
   useEffect(() => {
@@ -25,27 +25,36 @@ function LazyModel({ url, position, rotation = [0,0,0] as [number,number,number]
     return () => clearInterval(iv);
   }, [position, renderDistance]);
   if (!load) return null;
-  return <Suspense fallback={null}><Loaded url={url} position={position} rotation={rotation} scale={scale} /></Suspense>;
+  return <Suspense fallback={null}><Loaded url={url} position={position} rotation={rotation} scale={scale} scaleXYZ={scaleXYZ} /></Suspense>;
 }
 
-function Loaded({ url, position, rotation, scale }: { url:string; position:[number,number,number]; rotation:[number,number,number]; scale:number }) {
+function Loaded({ url, position, rotation, scale, scaleXYZ }: { url:string; position:[number,number,number]; rotation:[number,number,number]; scale:number; scaleXYZ?: [number,number,number] }) {
   const { scene } = useGLTF(url);
   const cloned = useMemo(() => {
     const c = scene.clone(true);
     const box = new THREE.Box3().setFromObject(c);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
-    const max = Math.max(size.x, size.y, size.z);
-    const s = max > 0 ? scale/max : scale;
-    // Ground at true base (min Y), center on X/Z. Previously centered on all 3 axes,
-    // which floated/sank every model instead of sitting it on the surface at position.y.
-    c.position.x = -center.x * s;
-    c.position.z = -center.z * s;
-    c.position.y = -box.min.y * s;
-    c.scale.setScalar(s);
+    let sx: number, sy: number, sz: number;
+    if (scaleXYZ) {
+      // Non-uniform correction for models that lost real proportions (e.g. cube-normalized
+      // exports where X=Y=Z regardless of the real object's shape) — impose real-world
+      // target dimensions per axis directly instead of one uniform "longest axis" factor.
+      sx = size.x > 0 ? scaleXYZ[0]/size.x : 1;
+      sy = size.y > 0 ? scaleXYZ[1]/size.y : 1;
+      sz = size.z > 0 ? scaleXYZ[2]/size.z : 1;
+    } else {
+      const max = Math.max(size.x, size.y, size.z);
+      sx = sy = sz = max > 0 ? scale/max : scale;
+    }
+    // Ground at true base (min Y), center on X/Z.
+    c.position.x = -center.x * sx;
+    c.position.z = -center.z * sz;
+    c.position.y = -box.min.y * sy;
+    c.scale.set(sx, sy, sz);
     c.traverse((ch) => { if (ch instanceof THREE.Mesh) { ch.castShadow = true; ch.receiveShadow = true; } });
     return c;
-  }, [scene, scale]);
+  }, [scene, scale, scaleXYZ]);
   return <group position={position} rotation={rotation}><primitive object={cloned} /></group>;
 }
 
@@ -96,6 +105,45 @@ export function RealDesiccator({ position = [-2,1,-0.5] as [number,number,number
 export function RealLabCoat({ position = [-6.5,1,4.5] as [number,number,number] }) {
   const i: Interactable = { id:"lab-coat", kind:"safety-station", label:"Lab Coat", position, action:"Put on coat" };
   return <InteractableMesh interactable={i} highlightColor="#22c55e"><LazyModel url="/models/07_lab_coat_hanging.glb" position={position} scale={1.306} renderDistance={6} /></InteractableMesh>;
+}
+
+// === GLASSWARE SET — real measured dimensions, not guessed ===
+// test_tube.glb measures X=Y=Z=2 exactly (cube-normalized export, zero real shape info
+// retained). Uniform "longest axis" scaling would make a real tube's length AND diameter
+// grow together, producing a fat stub instead of a tube. Using scaleXYZ to impose real
+// test-tube proportions directly: ~15cm length, ~1.6cm diameter.
+export function RealTestTubeRack({ position = [0.3,1,0.5] as [number,number,number] }) {
+  const i: Interactable = { id:"test-tube-rack", kind:"apparatus" as any, label:"Test Tube Rack", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee">
+    <LazyModel url="/models/test_tube_rack.glb" position={position} scale={0.25} renderDistance={5} />
+    {[-0.08,-0.04,0,0.04,0.08].map((dx,idx) => (
+      <LazyModel key={idx} url="/models/test_tube.glb" position={[position[0]+dx, position[1]+0.06, position[2]]} scaleXYZ={[0.016,0.15,0.016]} renderDistance={5} />
+    ))}
+  </InteractableMesh>;
+}
+export function RealGraduatedCylinder({ position = [0.7,1,0.3] as [number,number,number] }) {
+  const i: Interactable = { id:"graduated-cylinder", kind:"apparatus" as any, label:"Graduated Cylinder", position, action:"Measure volume" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/graduated_cylinder.glb" position={position} scale={0.2} renderDistance={5} /></InteractableMesh>;
+}
+export function RealFunnel({ position = [0.9,1,0.5] as [number,number,number] }) {
+  const i: Interactable = { id:"funnel", kind:"apparatus" as any, label:"Funnel", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/cc0_-_funnel_3.glb" position={position} scale={0.12} renderDistance={5} /></InteractableMesh>;
+}
+export function RealWashBottle({ position = [1.1,1,0.5] as [number,number,number] }) {
+  const i: Interactable = { id:"wash-bottle", kind:"apparatus" as any, label:"Wash Bottle", position, action:"Squeeze" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/wash_bottle.glb" position={position} scale={0.2} renderDistance={5} /></InteractableMesh>;
+}
+export function RealMechanicalPipette({ position = [0.5,1,0.3] as [number,number,number] }) {
+  const i: Interactable = { id:"mechanical-pipette", kind:"apparatus" as any, label:"Pipette", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/mechanical_pipette.glb" position={position} scale={0.14} renderDistance={5} /></InteractableMesh>;
+}
+export function RealButchnerFunnel({ position = [-1.5,1,-0.7] as [number,number,number] }) {
+  const i: Interactable = { id:"buchner-funnel", kind:"apparatus" as any, label:"Büchner Funnel", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/08_b_chner_funnel.glb" position={position} scale={0.1115} renderDistance={5} /></InteractableMesh>;
+}
+export function RealSeparatoryFunnel({ position = [-1.8,1,-0.7] as [number,number,number] }) {
+  const i: Interactable = { id:"separatory-funnel", kind:"apparatus" as any, label:"Separatory Funnel", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/11_separatory_funnel.glb" position={position} scale={0.1625} renderDistance={5} /></InteractableMesh>;
 }
 
 // === BEAKER (procedural, lightweight, always renders) ===
