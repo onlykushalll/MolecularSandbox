@@ -21,6 +21,8 @@ import {
   RealTestTubeRack, RealGraduatedCylinder, RealFunnel, RealWashBottle,
   RealMechanicalPipette, RealButchnerFunnel, RealSeparatoryFunnel,
   RealFireExtinguisher, RealFireBlanket, RealSharpsContainer, RealGloveBox, RealSafetyGoggles,
+  RealMicroscope, RealPHMeter, RealFeverThermometer, RealLaserThermometer, RealStopwatch,
+  RealMortarPestle, RealTripodStand,
   preloadAllModels,
 } from "./RealModels";
 import { ChemicalShelfRack } from "./ChemicalShelfRack";
@@ -58,6 +60,13 @@ function SceneContents() {
       <RealSharpsContainer position={[-6.8, 1.0, 5.0]} />
       <RealGloveBox position={[-6.8, 1.3, 5.5]} />
       <RealSafetyGoggles position={[-6.3, 1.0, 5.8]} />
+      <RealMicroscope position={[-5, 1.0, -1.5]} />
+      <RealPHMeter position={[-4.6, 1.0, -1.5]} />
+      <RealFeverThermometer position={[-4.2, 1.0, -1.7]} />
+      <RealLaserThermometer position={[-3.9, 1.0, -1.7]} />
+      <RealStopwatch position={[-4.4, 1.0, -1.2]} />
+      <RealMortarPestle position={[-5.3, 1.0, -1.2]} />
+      <RealTripodStand position={[-1.2, 1.0, 0.0]} />
 
       {/* === SAFETY === */}
       <RealLabCoat position={[-6.5, 1.0, 4.5]} />

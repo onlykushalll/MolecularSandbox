@@ -172,6 +172,43 @@ export function RealSafetyGoggles({ position = [-6.3,1.0,5.8] as [number,number,
   return <InteractableMesh interactable={i} highlightColor="#22c55e"><LazyModel url="/models/glasses.glb" position={position} scale={0.16} renderDistance={6} /></InteractableMesh>;
 }
 
+// === INSTRUMENTATION ZONE — real measured dimensions. spectrophotometer.glb deliberately
+// excluded: its raw geometry (Y=3.34 vs X=127.5/Z=216.1) strongly suggests the model is
+// lying on its side, needing a rotation fix I can't confidently determine without a visual
+// check. Shipping a guessed rotation risks it rendering sideways — not worth the risk.
+export function RealMicroscope({ position = [-5,1.0,-1.5] as [number,number,number] }) {
+  const i: Interactable = { id:"microscope", kind:"apparatus" as any, label:"Microscope", position, action:"Look through" };
+  return <InteractableMesh interactable={i} highlightColor="#a78bfa"><LazyModel url="/models/microscope_swift_sw380b.glb" position={position} scale={0.35} renderDistance={6} /></InteractableMesh>;
+}
+export function RealPHMeter({ position = [-4.6,1.0,-1.5] as [number,number,number] }) {
+  // Cube-normalized raw geometry (X=Y=Z≈2) — a real pen-style pH meter is long and thin,
+  // not a cube. Imposed proportions since none survive in the source geometry.
+  const i: Interactable = { id:"ph-meter", kind:"apparatus" as any, label:"Digital pH Meter", position, action:"Measure pH" };
+  return <InteractableMesh interactable={i} highlightColor="#a78bfa"><LazyModel url="/models/low_poly_digital_ph_meter.glb" position={position} scaleXYZ={[0.03,0.16,0.03]} renderDistance={6} /></InteractableMesh>;
+}
+export function RealFeverThermometer({ position = [-4.2,1.0,-1.7] as [number,number,number] }) {
+  const i: Interactable = { id:"fever-thermometer", kind:"apparatus" as any, label:"Thermometer", position, action:"Read temperature" };
+  return <InteractableMesh interactable={i} highlightColor="#a78bfa"><LazyModel url="/models/fever_thermometer.glb" position={position} scale={0.14} renderDistance={6} /></InteractableMesh>;
+}
+export function RealLaserThermometer({ position = [-3.9,1.0,-1.7] as [number,number,number] }) {
+  const i: Interactable = { id:"laser-thermometer", kind:"apparatus" as any, label:"Laser Thermometer", position, action:"Read temperature" };
+  return <InteractableMesh interactable={i} highlightColor="#a78bfa"><LazyModel url="/models/laser_thermometer.glb" position={position} scale={0.18} renderDistance={6} /></InteractableMesh>;
+}
+export function RealStopwatch({ position = [-4.4,1.0,-1.2] as [number,number,number] }) {
+  const i: Interactable = { id:"stopwatch", kind:"apparatus" as any, label:"Stopwatch", position, action:"Time reaction" };
+  return <InteractableMesh interactable={i} highlightColor="#a78bfa"><LazyModel url="/models/stopwatch-284.glb" position={position} scale={0.08} renderDistance={6} /></InteractableMesh>;
+}
+export function RealMortarPestle({ position = [-5.3,1.0,-1.2] as [number,number,number] }) {
+  const i: Interactable = { id:"mortar-pestle", kind:"apparatus" as any, label:"Mortar and Pestle", position, action:"Grind" };
+  return <InteractableMesh interactable={i} highlightColor="#a78bfa"><LazyModel url="/models/mortar_and_pestle.glb" position={position} scale={0.12} renderDistance={6} /></InteractableMesh>;
+}
+// Tripod stand belongs with the heating setup (holds a beaker over the Bunsen burner),
+// not the instrumentation zone — placed near RealBunsenBurner, not the microscope cluster.
+export function RealTripodStand({ position = [-1.2,1.0,0.0] as [number,number,number] }) {
+  const i: Interactable = { id:"tripod-stand", kind:"apparatus" as any, label:"Tripod Stand", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#f59e0b"><LazyModel url="/models/tripod_stand.glb" position={position} scale={0.18} renderDistance={6} /></InteractableMesh>;
+}
+
 // === BEAKER (procedural, lightweight, always renders) ===
 export function RealBeaker({ container }: { container: any }) {
   const heldItem = usePlayerStore(s=>s.heldItem);
