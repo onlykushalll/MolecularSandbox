@@ -26,7 +26,7 @@ export function LabRoom() {
 
   return (
     <group>
-      {/* === FLOOR — epoxy resin, light grey, glossy === */}
+      {/* === FLOOR — dark epoxy resin, real contrast against light walls/ceiling === */}
       <mesh
         position={[0, 0, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
@@ -34,8 +34,8 @@ export function LabRoom() {
       >
         <planeGeometry args={[width, depth]} />
         <meshStandardMaterial
-          color="#d4d8de"
-          roughness={0.25}
+          color="#4b5563"
+          roughness={0.2}
           metalness={0.15}
           envMapIntensity={0.8}
         />
@@ -43,7 +43,7 @@ export function LabRoom() {
 
       {/* Subtle floor grid (lab tile pattern) */}
       <gridHelper
-        args={[width, 14, "#a0a8b4", "#b8c0cc"]}
+        args={[width, 14, "#6b7280", "#374151"]}
         position={[0, 0.01, 0]}
       />
 
@@ -96,7 +96,7 @@ export function LabRoom() {
       {/* Door frame */}
       <mesh position={[2, 1.1, halfD]}>
         <boxGeometry args={[2.0, 2.3, 0.08]} />
-        <meshStandardMaterial color="#3a3f4b" roughness={0.4} metalness={0.7} wireframe />
+        <meshStandardMaterial color="#3a3f4b" roughness={0.4} metalness={0.7} />
       </mesh>
 
       {/* East wall (with window) — split */}
@@ -124,7 +124,7 @@ export function LabRoom() {
       {/* Window frame */}
       <mesh position={[halfW, 1.5, 1.5]}>
         <boxGeometry args={[0.1, 1.8, 2.0]} />
-        <meshStandardMaterial color="#3a3f4b" roughness={0.4} metalness={0.7} wireframe />
+        <meshStandardMaterial color="#3a3f4b" roughness={0.4} metalness={0.7} />
       </mesh>
       {/* Window light (soft daylight coming in) */}
       <directionalLight position={[halfW + 2, 2, 1.5]} intensity={0.3} color="#d4e8f5" />
@@ -149,7 +149,7 @@ export function LabRoom() {
         </mesh>
       ))}
 
-      {/* === CEILING LIGHT PANELS — flush mounted, glowing === */}
+      {/* === CEILING LIGHT PANELS — hero zone (wet bench + fume hood axis): brightest, sharpest === */}
       {[-3, 0, 3].map((x) =>
         [-3, 0, 3].map((z) => (
           <group key={`light-${x}-${z}`} position={[x, height - 0.05, z]}>
@@ -168,19 +168,43 @@ export function LabRoom() {
                 toneMapped={false}
               />
             </mesh>
-            {/* Actual light */}
-            <pointLight position={[0, -0.15, 0]} intensity={0.4} color="#f0f4f8" distance={6} decay={1.5} />
+            {/* Actual light — brighter than the side zones, this is the room's visual hero */}
+            <pointLight position={[0, -0.15, 0]} intensity={0.55} color="#f0f4f8" distance={7} decay={1.5} />
           </group>
         ))
       )}
 
-      {/* === WALL ACCENT STRIP — thin colored line at 1.2m height (lab standard) === */}
-      {/* Green accent on north wall */}
+      {/* === CEILING LIGHT PANELS — storage / instrumentation zones: present but deliberately
+           quieter than the hero zone. Previously these X≈±7 areas had zero dedicated light
+           at all (the 9-light grid only spanned X=[-3,3] in a 16m-wide room). === */}
+      {[-6.5, 6.5].map((x) =>
+        [-3, 0, 3].map((z) => (
+          <group key={`side-light-${x}-${z}`} position={[x, height - 0.05, z]}>
+            <mesh>
+              <boxGeometry args={[1.2, 0.08, 0.5]} />
+              <meshStandardMaterial color="#e8e8e8" roughness={0.5} metalness={0.3} />
+            </mesh>
+            <mesh position={[0, -0.05, 0]}>
+              <boxGeometry args={[1.1, 0.02, 0.4]} />
+              <meshStandardMaterial
+                color="#ffffff"
+                emissive="#dde4ea"
+                emissiveIntensity={1.3}
+                toneMapped={false}
+              />
+            </mesh>
+            {/* Quieter, cooler light — enough to see and work by, without competing with the hero zone */}
+            <pointLight position={[0, -0.15, 0]} intensity={0.28} color="#dde4ea" distance={6} decay={1.5} />
+          </group>
+        ))
+      )}
+
+      {/* === WALL ACCENT STRIP — single consistent hue at 1.2m height, wraps two walls === */}
       <mesh position={[0, 1.2, -halfD + wallThickness / 2 + 0.01]}>
         <boxGeometry args={[width, 0.02, 0.01]} />
-        <meshStandardMaterial color="#34d399" emissive="#34d399" emissiveIntensity={0.3} />
+        <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={0.3} />
       </mesh>
-      {/* Blue accent on east wall */}
+      {/* Same accent hue on east wall — one motif, not a second competing color */}
       <mesh position={[halfW - wallThickness / 2 - 0.01, 1.2, 0]}>
         <boxGeometry args={[0.01, 0.02, depth]} />
         <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={0.3} />

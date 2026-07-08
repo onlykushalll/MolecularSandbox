@@ -76,8 +76,8 @@ function Lighting() {
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-10}
         shadow-camera-right={10}
-        shadow-camera-top={-10}
-        shadow-camera-bottom={10}
+        shadow-camera-top={7}
+        shadow-camera-bottom={-7}
         shadow-bias={-0.0001}
         color="#f0f4f8"
       />
