@@ -146,6 +146,32 @@ export function RealSeparatoryFunnel({ position = [-1.8,1,-0.7] as [number,numbe
   return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/11_separatory_funnel.glb" position={position} scale={0.1625} renderDistance={5} /></InteractableMesh>;
 }
 
+// === SAFETY CORRIDOR — real measured dimensions, chosen specifically to avoid
+// orientation ambiguity (fire_extinguisher.glb has sane Y-dominant proportions;
+// the CO2 variant's raw geometry was too ambiguous to trust without a visual check).
+export function RealFireExtinguisher({ position = [-7,0,3.5] as [number,number,number] }) {
+  const i: Interactable = { id:"fire-extinguisher", kind:"safety-station", label:"Fire Extinguisher", position, action:"Grab" };
+  return <InteractableMesh interactable={i} highlightColor="#ef4444"><LazyModel url="/models/fire_extinguisher.glb" position={position} scale={0.5} renderDistance={6} /></InteractableMesh>;
+}
+export function RealFireBlanket({ position = [-7,1.4,4.0] as [number,number,number] }) {
+  const i: Interactable = { id:"fire-blanket", kind:"safety-station", label:"Fire Blanket", position, action:"Grab" };
+  return <InteractableMesh interactable={i} highlightColor="#ef4444"><LazyModel url="/models/fire_blanket_free_low_poly.glb" position={position} scale={0.22} renderDistance={6} /></InteractableMesh>;
+}
+export function RealSharpsContainer({ position = [-6.8,1.0,5.0] as [number,number,number] }) {
+  const i: Interactable = { id:"sharps-container", kind:"safety-station", label:"Sharps Container", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#facc15"><LazyModel url="/models/hospital_sharps_container.glb" position={position} scale={0.18} renderDistance={6} /></InteractableMesh>;
+}
+export function RealGloveBox({ position = [-6.8,1.3,5.5] as [number,number,number] }) {
+  // Cube-normalized raw geometry (X=Y=Z=2, zero shape retained) — a real glove box is a
+  // flat rectangular dispenser, not a cube. Non-uniform correction: ~24cm x 10cm x 12cm.
+  const i: Interactable = { id:"glove-box", kind:"safety-station", label:"Nitrile Gloves", position, action:"Take gloves" };
+  return <InteractableMesh interactable={i} highlightColor="#22c55e"><LazyModel url="/models/nitrile_glove_box_v2.glb" position={position} scaleXYZ={[0.24,0.10,0.12]} renderDistance={6} /></InteractableMesh>;
+}
+export function RealSafetyGoggles({ position = [-6.3,1.0,5.8] as [number,number,number] }) {
+  const i: Interactable = { id:"safety-goggles", kind:"safety-station", label:"Safety Goggles", position, action:"Take goggles" };
+  return <InteractableMesh interactable={i} highlightColor="#22c55e"><LazyModel url="/models/glasses.glb" position={position} scale={0.16} renderDistance={6} /></InteractableMesh>;
+}
+
 // === BEAKER (procedural, lightweight, always renders) ===
 export function RealBeaker({ container }: { container: any }) {
   const heldItem = usePlayerStore(s=>s.heldItem);
