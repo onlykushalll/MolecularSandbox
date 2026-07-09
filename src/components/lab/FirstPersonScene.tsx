@@ -24,6 +24,8 @@ import {
   RealMicroscope, RealPHMeter, RealFeverThermometer, RealLaserThermometer, RealStopwatch,
   RealMortarPestle, RealTripodStand,
   RealPlant, RealWallClock, RealPeriodicTable, RealBookshelf, RealNotepad, RealPen, RealPencil, RealRuler,
+  RealWashBasin, RealLabChair, RealOfficeChair, RealStorageCabinet, RealTrashBin, RealWoodenSpatula,
+  RealErlenmeyerFlask, RealFlorenceFlask, RealRoundBottomFlask, RealFilterFlask, RealCondenser,
   preloadAllModels,
 } from "./RealModels";
 import { ChemicalShelfRack } from "./ChemicalShelfRack";
@@ -76,6 +78,17 @@ function SceneContents() {
       <RealPen position={[1.6, 1.0, 0.3]} />
       <RealPencil position={[1.65, 1.0, 0.35]} />
       <RealRuler position={[1.4, 1.0, 0.1]} />
+      <RealWashBasin position={[-7.5, 0.9, 0]} />
+      <RealLabChair position={[2, 0, -1]} />
+      <RealOfficeChair position={[4, 0, 1.5]} />
+      <RealStorageCabinet position={[-7.5, 0, -5]} />
+      <RealTrashBin position={[2.5, 0, 1.5]} />
+      <RealWoodenSpatula position={[0.4, 1.0, 0.15]} />
+      <RealErlenmeyerFlask position={[0.2, 1.0, 0.7]} />
+      <RealFlorenceFlask position={[-0.2, 1.0, 0.6]} />
+      <RealRoundBottomFlask position={[-0.4, 1.0, 0.4]} />
+      <RealFilterFlask position={[1.5, 1.0, 0.2]} />
+      <RealCondenser position={[-1.6, 1.0, -0.9]} />
 
       {/* === SAFETY === */}
       <RealLabCoat position={[-6.5, 1.0, 4.5]} />

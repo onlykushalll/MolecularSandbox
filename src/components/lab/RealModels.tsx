@@ -247,6 +247,56 @@ export function RealRuler({ position = [1.4,1.0,0.1] as [number,number,number] }
   return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/ruler.glb" position={position} scale={0.3} renderDistance={5} /></InteractableMesh>;
 }
 
+// === FURNITURE + MORE GLASSWARE — laboratory_cabinet_storage.glb's raw Y measures 343cm,
+// taller than this room's 3.2m ceiling if trusted literally. Capped its real target at 2.0m
+// so it actually fits under the ceiling, accepting the width/depth scale down proportionally
+// rather than trust the raw ratio into an impossible height.
+export function RealWashBasin({ position = [-7.5,0.9,0] as [number,number,number] }) {
+  const i: Interactable = { id:"wash-basin", kind:"apparatus" as any, label:"Sink", position, action:"Wash hands" };
+  return <InteractableMesh interactable={i} highlightColor="#38bdf8"><LazyModel url="/models/gameready_wash_basin_model.glb" position={position} scale={0.85} renderDistance={6} /></InteractableMesh>;
+}
+export function RealLabChair({ position = [2,0,-1] as [number,number,number] }) {
+  const i: Interactable = { id:"lab-chair", kind:"apparatus" as any, label:"Lab Stool", position, action:"Sit" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/lab_chair.glb" position={position} scale={0.75} renderDistance={6} /></InteractableMesh>;
+}
+export function RealOfficeChair({ position = [4,0,1.5] as [number,number,number] }) {
+  const i: Interactable = { id:"office-chair", kind:"apparatus" as any, label:"Chair", position, action:"Sit" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/office_chair.glb" position={position} scale={0.9} renderDistance={6} /></InteractableMesh>;
+}
+export function RealStorageCabinet({ position = [-7.5,0,-5] as [number,number,number] }) {
+  const i: Interactable = { id:"storage-cabinet", kind:"apparatus" as any, label:"Storage Cabinet", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/laboratory_cabinet_storage__pbr_low_poly__free.glb" position={position} scale={2.0} renderDistance={7} /></InteractableMesh>;
+}
+export function RealTrashBin({ position = [2.5,0,1.5] as [number,number,number] }) {
+  // Cube-normalized raw geometry — a real trash bin is taller than wide, not a cube.
+  const i: Interactable = { id:"trash-bin", kind:"apparatus" as any, label:"Trash Bin", position, action:"Dispose waste" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/trash_bin.glb" position={position} scaleXYZ={[0.32,0.55,0.32]} renderDistance={6} /></InteractableMesh>;
+}
+export function RealWoodenSpatula({ position = [0.4,1.0,0.15] as [number,number,number] }) {
+  const i: Interactable = { id:"wooden-spatula", kind:"apparatus" as any, label:"Spatula", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/wooden_spatula.glb" position={position} scale={0.18} renderDistance={5} /></InteractableMesh>;
+}
+export function RealErlenmeyerFlask({ position = [0.2,1.0,0.7] as [number,number,number] }) {
+  const i: Interactable = { id:"erlenmeyer-flask", kind:"apparatus" as any, label:"Erlenmeyer Flask", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/erlenmeyer_flask.glb" position={position} scale={0.13} renderDistance={5} /></InteractableMesh>;
+}
+export function RealFlorenceFlask({ position = [-0.2,1.0,0.6] as [number,number,number] }) {
+  const i: Interactable = { id:"florence-flask", kind:"apparatus" as any, label:"Florence Flask", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/florence_flask.glb" position={position} scale={0.13} renderDistance={5} /></InteractableMesh>;
+}
+export function RealRoundBottomFlask({ position = [-0.4,1.0,0.4] as [number,number,number] }) {
+  const i: Interactable = { id:"round-bottom-flask", kind:"apparatus" as any, label:"Round-Bottom Flask", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/simple_lab_round_bottom_flask.glb" position={position} scale={0.15} renderDistance={5} /></InteractableMesh>;
+}
+export function RealFilterFlask({ position = [1.5,1.0,0.2] as [number,number,number] }) {
+  const i: Interactable = { id:"filter-flask", kind:"apparatus" as any, label:"Filter Flask", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/09_filter_flask_vacuum_250ml.glb" position={position} scale={0.195} renderDistance={5} /></InteractableMesh>;
+}
+export function RealCondenser({ position = [-1.6,1.0,-0.9] as [number,number,number] }) {
+  const i: Interactable = { id:"condenser", kind:"apparatus" as any, label:"Liebig Condenser", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/10_condenser_liebig.glb" position={position} scale={0.4} renderDistance={5} /></InteractableMesh>;
+}
+
 // === BEAKER (procedural, lightweight, always renders) ===
 export function RealBeaker({ container }: { container: any }) {
   const heldItem = usePlayerStore(s=>s.heldItem);
