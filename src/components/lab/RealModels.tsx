@@ -297,6 +297,42 @@ export function RealCondenser({ position = [-1.6,1.0,-0.9] as [number,number,num
   return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/10_condenser_liebig.glb" position={position} scale={0.4} renderDistance={5} /></InteractableMesh>;
 }
 
+// === TERMINAL + REMAINING SAFETY/UTILITY — apple_desktop.glb excluded: raw Z=35.1 vs
+// X=6.7/Y=4.65 is the same red-flag ratio as spectrophotometer/whiteboard. Used
+// gaming_desktop_pc.glb instead, whose three axes (67/79/83) are close enough together to
+// trust. bottle_with_dropper.glb excluded — X=Y but Z dominant, meaning its long axis may
+// not align with the Y-up grounding this loader assumes; already have safe bottle models.
+export function RealOrderingTerminal({ position = [6,0,-1] as [number,number,number] }) {
+  const i: Interactable = { id:"ordering-terminal", kind:"apparatus" as any, label:"Ordering Terminal", position, action:"Order chemicals" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/gaming_desktop_pc.glb" position={position} scale={0.8} renderDistance={7} /></InteractableMesh>;
+}
+export function RealGasCylinder({ position = [-6,0,-3] as [number,number,number] }) {
+  const i: Interactable = { id:"gas-cylinder", kind:"apparatus" as any, label:"Gas Cylinder", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/gas_cylinder_tank_co2_helium_nitrogen.glb" position={position} scale={0.8} renderDistance={7} /></InteractableMesh>;
+}
+export function RealPetriDishes({ position = [0.9,1.0,-0.1] as [number,number,number] }) {
+  // Cube-normalized raw geometry — real petri dishes are flat and shallow, not cubes.
+  const i: Interactable = { id:"petri-dishes", kind:"apparatus" as any, label:"Petri Dishes", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/petri_dish_collection__by_3dlabware.glb" position={position} scaleXYZ={[0.09,0.015,0.09]} renderDistance={5} /></InteractableMesh>;
+}
+export function RealFirstAidKit({ position = [-6.8,1.3,4.3] as [number,number,number] }) {
+  const i: Interactable = { id:"first-aid-kit", kind:"safety-station", label:"First Aid Kit", position, action:"Open" };
+  return <InteractableMesh interactable={i} highlightColor="#ef4444"><LazyModel url="/models/tactical_first_aid_kit.glb" position={position} scale={0.28} renderDistance={6} /></InteractableMesh>;
+}
+export function RealSerumBottle({ position = [0.85,1.0,-0.15] as [number,number,number] }) {
+  // Cube-normalized raw geometry, zero shape retained — imposed real serum-bottle proportions.
+  const i: Interactable = { id:"serum-bottle", kind:"apparatus" as any, label:"Serum Bottle", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/treatment_serum_dropper_bottle.glb" position={position} scaleXYZ={[0.025,0.09,0.025]} renderDistance={5} /></InteractableMesh>;
+}
+export function RealVolumetricFlasks({ position = [-0.6,1.0,0.3] as [number,number,number] }) {
+  const i: Interactable = { id:"volumetric-flasks", kind:"apparatus" as any, label:"Volumetric Flasks", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/volumetric_flasks.glb" position={position} scale={0.35} renderDistance={5} /></InteractableMesh>;
+}
+export function RealWarningSign({ position = [1.5,1.8,-5.9] as [number,number,number] }) {
+  const i: Interactable = { id:"warning-sign", kind:"apparatus" as any, label:"Warning Sign", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#facc15"><LazyModel url="/models/warning_signs__virus_laboratory.glb" position={position} scale={0.35} renderDistance={7} /></InteractableMesh>;
+}
+
 // === BEAKER (procedural, lightweight, always renders) ===
 export function RealBeaker({ container }: { container: any }) {
   const heldItem = usePlayerStore(s=>s.heldItem);
