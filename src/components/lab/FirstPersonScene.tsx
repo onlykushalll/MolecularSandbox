@@ -27,7 +27,7 @@ import {
   RealWashBasin, RealLabChair, RealOfficeChair, RealStorageCabinet, RealTrashBin, RealWoodenSpatula,
   RealErlenmeyerFlask, RealFlorenceFlask, RealRoundBottomFlask, RealFilterFlask, RealCondenser,
   RealOrderingTerminal, RealGasCylinder, RealPetriDishes, RealFirstAidKit, RealSerumBottle,
-  RealVolumetricFlasks, RealWarningSign,
+  RealVolumetricFlasks, RealWarningSign, RealCrucibleTongs, RealGlassPipette,
   preloadAllModels,
 } from "./RealModels";
 import { ChemicalShelfRack } from "./ChemicalShelfRack";
@@ -98,6 +98,8 @@ function SceneContents() {
       <RealSerumBottle position={[0.85, 1.0, -0.15]} />
       <RealVolumetricFlasks position={[-0.6, 1.0, 0.3]} />
       <RealWarningSign position={[1.5, 1.8, -5.9]} />
+      <RealCrucibleTongs position={[-1.4, 1.0, 0.4]} />
+      <RealGlassPipette position={[0.75, 1.0, 0.55]} />
 
       {/* === SAFETY === */}
       <RealLabCoat position={[-6.5, 1.0, 4.5]} />

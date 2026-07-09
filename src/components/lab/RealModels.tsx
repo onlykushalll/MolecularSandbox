@@ -333,6 +333,18 @@ export function RealWarningSign({ position = [1.5,1.8,-5.9] as [number,number,nu
   return <InteractableMesh interactable={i} highlightColor="#facc15"><LazyModel url="/models/warning_signs__virus_laboratory.glb" position={position} scale={0.35} renderDistance={7} /></InteractableMesh>;
 }
 
+// emergency_shower_with_eye_wash.glb excluded: Z=6.2 dominant vs Y=3.38, the same
+// height-should-dominate-but-doesn't red flag as spectrophotometer/whiteboard/indoor_plant.
+// Same rule applied consistently even this late in the pass.
+export function RealCrucibleTongs({ position = [-1.4,1.0,0.4] as [number,number,number] }) {
+  const i: Interactable = { id:"crucible-tongs", kind:"apparatus" as any, label:"Crucible Tongs", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#f59e0b"><LazyModel url="/models/crucible_tongs_-_game_ready.glb" position={position} scale={0.22} renderDistance={5} /></InteractableMesh>;
+}
+export function RealGlassPipette({ position = [0.75,1.0,0.55] as [number,number,number] }) {
+  const i: Interactable = { id:"glass-pipette", kind:"apparatus" as any, label:"Pipette", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/free_pipette__laboratory__low_poly.glb" position={position} scale={0.22} renderDistance={5} /></InteractableMesh>;
+}
+
 // === BEAKER (procedural, lightweight, always renders) ===
 export function RealBeaker({ container }: { container: any }) {
   const heldItem = usePlayerStore(s=>s.heldItem);
