@@ -209,6 +209,44 @@ export function RealTripodStand({ position = [-1.2,1.0,0.0] as [number,number,nu
   return <InteractableMesh interactable={i} highlightColor="#f59e0b"><LazyModel url="/models/tripod_stand.glb" position={position} scale={0.18} renderDistance={6} /></InteractableMesh>;
 }
 
+// === DECOR — indoor_plant.glb and whiteboard (1).glb deliberately excluded. Both show the
+// same red flag as spectrophotometer: a dimension that should be dominant (plant height,
+// whiteboard height) is instead the smallest measured axis, meaning the raw geometry is
+// very likely oriented sideways/flat. Used monster_plant.glb instead (sane, Y-dominant,
+// round-base proportions). No safe substitute exists for the whiteboard, so it's skipped.
+export function RealPlant({ position = [7.5,0,5.5] as [number,number,number] }) {
+  const i: Interactable = { id:"plant", kind:"apparatus" as any, label:"Plant", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#84cc16"><LazyModel url="/models/monster_plant.glb" position={position} scale={0.6} renderDistance={7} /></InteractableMesh>;
+}
+export function RealWallClock({ position = [3,2.2,-5.9] as [number,number,number] }) {
+  const i: Interactable = { id:"wall-clock", kind:"apparatus" as any, label:"Clock", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/wall_clock.glb" position={position} scale={0.32} renderDistance={7} /></InteractableMesh>;
+}
+export function RealPeriodicTable({ position = [7.9,1.6,2] as [number,number,number] }) {
+  const i: Interactable = { id:"periodic-table", kind:"apparatus" as any, label:"Periodic Table", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/the_3d_periodic_table.glb" position={position} scale={1.1} renderDistance={7} /></InteractableMesh>;
+}
+export function RealBookshelf({ position = [-7.5,0,-3.5] as [number,number,number] }) {
+  const i: Interactable = { id:"bookshelf", kind:"apparatus" as any, label:"Reference Books", position, action:"Look" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/bookshelf_cc0.glb" position={position} scale={0.35} renderDistance={7} /></InteractableMesh>;
+}
+export function RealNotepad({ position = [1.5,1.0,0.2] as [number,number,number] }) {
+  const i: Interactable = { id:"notepad", kind:"apparatus" as any, label:"Lab Notebook", position, action:"Read notes" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/single_spiral_notepad.glb" position={position} scale={0.22} renderDistance={5} /></InteractableMesh>;
+}
+export function RealPen({ position = [1.6,1.0,0.3] as [number,number,number] }) {
+  const i: Interactable = { id:"pen", kind:"apparatus" as any, label:"Pen", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/the_pen.glb" position={position} scale={0.14} renderDistance={5} /></InteractableMesh>;
+}
+export function RealPencil({ position = [1.65,1.0,0.35] as [number,number,number] }) {
+  const i: Interactable = { id:"pencil", kind:"apparatus" as any, label:"Pencil", position, action:"Pick up" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/pencil.glb" position={position} scale={0.18} renderDistance={5} /></InteractableMesh>;
+}
+export function RealRuler({ position = [1.4,1.0,0.1] as [number,number,number] }) {
+  const i: Interactable = { id:"ruler", kind:"apparatus" as any, label:"Ruler", position, action:"Measure" };
+  return <InteractableMesh interactable={i} highlightColor="#94a3b8"><LazyModel url="/models/ruler.glb" position={position} scale={0.3} renderDistance={5} /></InteractableMesh>;
+}
+
 // === BEAKER (procedural, lightweight, always renders) ===
 export function RealBeaker({ container }: { container: any }) {
   const heldItem = usePlayerStore(s=>s.heldItem);

@@ -23,6 +23,7 @@ import {
   RealFireExtinguisher, RealFireBlanket, RealSharpsContainer, RealGloveBox, RealSafetyGoggles,
   RealMicroscope, RealPHMeter, RealFeverThermometer, RealLaserThermometer, RealStopwatch,
   RealMortarPestle, RealTripodStand,
+  RealPlant, RealWallClock, RealPeriodicTable, RealBookshelf, RealNotepad, RealPen, RealPencil, RealRuler,
   preloadAllModels,
 } from "./RealModels";
 import { ChemicalShelfRack } from "./ChemicalShelfRack";
@@ -67,6 +68,14 @@ function SceneContents() {
       <RealStopwatch position={[-4.4, 1.0, -1.2]} />
       <RealMortarPestle position={[-5.3, 1.0, -1.2]} />
       <RealTripodStand position={[-1.2, 1.0, 0.0]} />
+      <RealPlant position={[7.5, 0, 5.5]} />
+      <RealWallClock position={[3, 2.2, -5.9]} />
+      <RealPeriodicTable position={[7.9, 1.6, 2]} />
+      <RealBookshelf position={[-7.5, 0, -3.5]} />
+      <RealNotepad position={[1.5, 1.0, 0.2]} />
+      <RealPen position={[1.6, 1.0, 0.3]} />
+      <RealPencil position={[1.65, 1.0, 0.35]} />
+      <RealRuler position={[1.4, 1.0, 0.1]} />
 
       {/* === SAFETY === */}
       <RealLabCoat position={[-6.5, 1.0, 4.5]} />
