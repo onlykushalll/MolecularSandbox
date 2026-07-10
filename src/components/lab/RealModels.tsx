@@ -345,6 +345,17 @@ export function RealGlassPipette({ position = [0.75,1.0,0.55] as [number,number,
   return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/free_pipette__laboratory__low_poly.glb" position={position} scale={0.22} renderDistance={5} /></InteractableMesh>;
 }
 
+// === ROOM STRUCTURE — real models for door + window only. Ceiling lights and floor were
+// deliberately kept procedural: both are cube-normalized (zero real shape retained) or too
+// risky a swap for the room's largest surface without live visual verification. Door and
+// window had genuinely trustworthy, non-cube proportions, so replacing them is evidence-based.
+export function RealDoubleDoor({ position = [2,1.0,6] as [number,number,number], rotation = [0,0,0] as [number,number,number] }) {
+  return <LazyModel url="/models/double_door.glb" position={position} rotation={rotation} scale={2.3} renderDistance={10} />;
+}
+export function RealWindow({ position = [8,1.5,1.5] as [number,number,number], rotation = [0,Math.PI/2,0] as [number,number,number] }) {
+  return <LazyModel url="/models/window.glb" position={position} rotation={rotation} scale={1.8} renderDistance={10} />;
+}
+
 // === BEAKER (procedural, lightweight, always renders) ===
 export function RealBeaker({ container }: { container: any }) {
   const heldItem = usePlayerStore(s=>s.heldItem);
