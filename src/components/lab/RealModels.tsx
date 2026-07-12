@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, Suspense, useEffect, useState } from "react";
+import { useRef, useMemo, Suspense, useEffect, useState, useCallback } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -9,21 +9,40 @@ import { useLabStore } from "@/lib/store/lab-store";
 import { InteractableMesh } from "./InteractableMesh";
 import { mixHexColors } from "@/lib/chemistry/mixture";
 
+// === SHARED PROXIMITY TICKER ===
+// Previously every LazyModel instance ran its own independent setInterval(check, 500) —
+// with 62+ models wired in, that meant 62+ separate JS timers firing simultaneously, all
+// doing the same class of distance math. Consolidated into one shared interval that all
+// instances register a callback with, instead of each spinning up its own timer.
+const proximityListeners = new Map<number, () => void>();
+let proximityListenerId = 0;
+let proximityTickerStarted = false;
+function startProximityTicker() {
+  if (proximityTickerStarted) return;
+  proximityTickerStarted = true;
+  setInterval(() => { proximityListeners.forEach((cb) => cb()); }, 500);
+}
+function useProximityCheck(callback: () => void) {
+  useEffect(() => {
+    startProximityTicker();
+    const id = proximityListenerId++;
+    proximityListeners.set(id, callback);
+    callback();
+    return () => { proximityListeners.delete(id); };
+  }, [callback]);
+}
+
 // LazyModel — only loads GLB when player is within renderDistance
 function LazyModel({ url, position, rotation = [0,0,0] as [number,number,number], scale = 1, scaleXYZ, renderDistance = 5 }: {
   url: string; position: [number,number,number]; rotation?: [number,number,number]; scale?: number; scaleXYZ?: [number,number,number]; renderDistance?: number;
 }) {
   const [load, setLoad] = useState(false);
-  useEffect(() => {
-    const check = () => {
-      const p = usePlayerStore.getState().position;
-      const dx = p[0]-position[0], dz = p[2]-position[2];
-      setLoad(Math.sqrt(dx*dx+dz*dz) < renderDistance);
-    };
-    check();
-    const iv = setInterval(check, 500);
-    return () => clearInterval(iv);
+  const check = useCallback(() => {
+    const p = usePlayerStore.getState().position;
+    const dx = p[0]-position[0], dz = p[2]-position[2];
+    setLoad(Math.sqrt(dx*dx+dz*dz) < renderDistance);
   }, [position, renderDistance]);
+  useProximityCheck(check);
   if (!load) return null;
   return <Suspense fallback={null}><Loaded url={url} position={position} rotation={rotation} scale={scale} scaleXYZ={scaleXYZ} /></Suspense>;
 }
@@ -303,8 +322,21 @@ export function RealCondenser({ position = [-1.6,1.0,-0.9] as [number,number,num
 // trust. bottle_with_dropper.glb excluded — X=Y but Z dominant, meaning its long axis may
 // not align with the Y-up grounding this loader assumes; already have safe bottle models.
 export function RealOrderingTerminal({ position = [6,0,-1] as [number,number,number] }) {
-  const i: Interactable = { id:"ordering-terminal", kind:"apparatus" as any, label:"Ordering Terminal", position, action:"Order chemicals" };
-  return <InteractableMesh interactable={i} highlightColor="#22d3ee"><LazyModel url="/models/gaming_desktop_pc.glb" position={position} scale={0.8} renderDistance={7} /></InteractableMesh>;
+  const deskTop: [number, number, number] = [position[0], position[1] + 0.75, position[2]];
+  const i: Interactable = { id:"ordering-terminal", kind:"apparatus" as any, label:"Ordering Terminal", position: deskTop, action:"Order chemicals" };
+  return (
+    <>
+      {/* Simple procedural desk — the gaming_desktop_pc.glb model has no desk surface of
+          its own, and was previously sitting directly on the floor. */}
+      <mesh position={[position[0], position[1] + 0.375, position[2]]} castShadow receiveShadow>
+        <boxGeometry args={[1.2, 0.75, 0.6]} />
+        <meshStandardMaterial color="#2a2e38" roughness={0.4} metalness={0.2} />
+      </mesh>
+      <InteractableMesh interactable={i} highlightColor="#22d3ee">
+        <LazyModel url="/models/gaming_desktop_pc.glb" position={deskTop} scale={0.8} renderDistance={7} />
+      </InteractableMesh>
+    </>
+  );
 }
 export function RealGasCylinder({ position = [-6,0,-3] as [number,number,number] }) {
   const i: Interactable = { id:"gas-cylinder", kind:"apparatus" as any, label:"Gas Cylinder", position, action:"Look" };

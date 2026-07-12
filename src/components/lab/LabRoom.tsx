@@ -1,7 +1,6 @@
 "use client";
 
 import { LAB_DIMENSIONS } from "@/lib/store/player-store";
-import { RealDoubleDoor, RealWindow } from "./RealModels";
 
 /**
  * LabRoom — REDESIGNED with interior design principles
@@ -80,10 +79,27 @@ export function LabRoom() {
         <meshStandardMaterial color="#e2e6ec" roughness={0.8} metalness={0} />
       </mesh>
 
-      {/* Real double-door model — replaced the procedural box door/frame.
-          Trustworthy real proportions (Y=289/Z=303, plausible ~2.9m institutional
-          double-door), unlike the cube-normalized ceiling lights which stayed procedural. */}
-      <RealDoubleDoor position={[2, 1.0, halfD]} />
+      {/* Reverted to procedural glass door — the real double_door.glb model rendered as a
+          flat, oddly-lit brown-orange slab that clashed with the room's cool grey/cyan
+          palette. The swap was reasoned (trustworthy measured proportions), but the actual
+          visual result was a real coherence failure, so reverting rather than defending it. */}
+      <mesh position={[2, 1.1, halfD]}>
+        <boxGeometry args={[1.8, 2.2, 0.05]} />
+        <meshPhysicalMaterial
+          color="#b8d4e6"
+          transparent
+          opacity={0.35}
+          roughness={0.05}
+          metalness={0}
+          transmission={0.8}
+          ior={1.45}
+          clearcoat={1}
+        />
+      </mesh>
+      <mesh position={[2, 1.1, halfD]}>
+        <boxGeometry args={[2.0, 2.3, 0.08]} />
+        <meshStandardMaterial color="#3a3f4b" roughness={0.4} metalness={0.7} />
+      </mesh>
 
       {/* East wall (with window) — split */}
       <mesh position={[halfW, height / 2, -halfD + 3.5]} receiveShadow castShadow>
@@ -94,10 +110,23 @@ export function LabRoom() {
         <boxGeometry args={[wallThickness, height, 4]} />
         <meshStandardMaterial color="#e2e6ec" roughness={0.8} metalness={0} />
       </mesh>
-      {/* Real window model — replaced the procedural box window/frame. Trustworthy real
-          proportions (Y=83.5 clearly dominant over X=27.8/Z=54.9, a plausible portrait
-          window shape), unlike the cube-normalized ceiling lights which stayed procedural. */}
-      <RealWindow position={[halfW, 1.5, 1.5]} rotation={[0, Math.PI / 2, 0]} />
+      {/* Reverted to procedural window — same coherence failure as the door. */}
+      <mesh position={[halfW, 1.5, 1.5]}>
+        <boxGeometry args={[0.05, 1.6, 1.8]} />
+        <meshPhysicalMaterial
+          color="#d8e8f0"
+          transparent
+          opacity={0.25}
+          roughness={0.05}
+          transmission={0.85}
+          ior={1.45}
+          clearcoat={1}
+        />
+      </mesh>
+      <mesh position={[halfW, 1.5, 1.5]}>
+        <boxGeometry args={[0.1, 1.8, 2.0]} />
+        <meshStandardMaterial color="#3a3f4b" roughness={0.4} metalness={0.7} />
+      </mesh>
       {/* Window light (soft daylight coming in) */}
       <directionalLight position={[halfW + 2, 2, 1.5]} intensity={0.3} color="#d4e8f5" />
 
@@ -172,15 +201,9 @@ export function LabRoom() {
       )}
 
       {/* === WALL ACCENT STRIP — single consistent hue at 1.2m height, wraps two walls === */}
-      <mesh position={[0, 1.2, -halfD + wallThickness / 2 + 0.01]}>
-        <boxGeometry args={[width, 0.02, 0.01]} />
-        <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={0.3} />
-      </mesh>
-      {/* Same accent hue on east wall — one motif, not a second competing color */}
-      <mesh position={[halfW - wallThickness / 2 - 0.01, 1.2, 0]}>
-        <boxGeometry args={[0.01, 0.02, depth]} />
-        <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={0.3} />
-      </mesh>
+      {/* Wall accent strips removed — they read as a floating glowing line across the room
+          from first-person eye level, not as an intentional design accent. A plain wall
+          is better than a design element that looks like a bug. */}
 
       {/* === EXIT SIGN above door === */}
       <mesh position={[2, 2.5, halfD - 0.1]}>
