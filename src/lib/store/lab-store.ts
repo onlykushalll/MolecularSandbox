@@ -735,7 +735,7 @@ export const useLabStore = create<LabStore>((set, get) => ({
       sm.stopBubbling();
       get().addSafetyAlert({
         type: "explosion",
-        message: `💥 ${brokenContainerId.toUpperCase()} broke from thermal shock!`,
+        message: `💥 ${(brokenContainerId as string).toUpperCase()} broke from thermal shock!`,
         severity: "danger",
       });
       set({ lastBrokenAt: Date.now(), lastBrokenContainerId: brokenContainerId });

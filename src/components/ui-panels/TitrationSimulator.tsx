@@ -190,10 +190,10 @@ export function TitrationSimulator() {
     if (!analyte || !titrant) return [];
     const points: CurvePoint[] = [];
     const steps = 200;
-    const acidEntry = analyteIsAcid ? analyte : undefined;
-    const baseEntry = !analyteIsAcid ? analyte : undefined;
-    const acidTitrant = titrantIsAcid ? titrant : undefined;
-    const baseTitrant = !titrantIsAcid ? titrant : undefined;
+    const acidEntry = analyteIsAcid ? analyte as { name: string; pKa: number; n: number; label: string } : undefined;
+    const baseEntry = !analyteIsAcid ? analyte as { name: string; pKb: number; n: number; label: string } : undefined;
+    const acidTitrant = titrantIsAcid ? titrant as { name: string; pKa: number; n: number; label: string } : undefined;
+    const baseTitrant = !titrantIsAcid ? titrant as { name: string; pKb: number; n: number; label: string } : undefined;
     const isStrongStrong =
       (acidEntry && acidEntry.pKa < 0) || (baseEntry && baseEntry.pKb < 0);
     for (let i = 0; i <= steps; i++) {

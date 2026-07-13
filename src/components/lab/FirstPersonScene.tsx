@@ -1,7 +1,6 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { ContactShadows } from "@react-three/drei";
 
 import * as THREE from "three";
 import { Suspense, useEffect } from "react";
@@ -28,6 +27,7 @@ import {
   RealErlenmeyerFlask, RealFlorenceFlask, RealRoundBottomFlask, RealFilterFlask, RealCondenser,
   RealOrderingTerminal, RealGasCylinder, RealPetriDishes, RealFirstAidKit, RealSerumBottle,
   RealVolumetricFlasks, RealWarningSign, RealCrucibleTongs, RealGlassPipette,
+  RealSpectrophotometer, RealWhiteboard, RealBottleWithDropper, RealCO2Extinguisher,
   preloadAllModels,
 } from "./RealModels";
 import { ChemicalShelfRack } from "./ChemicalShelfRack";
@@ -35,74 +35,120 @@ import { ChemicalShelfRack } from "./ChemicalShelfRack";
 function SceneContents() {
   const containers = useLabStore((s) => s.containers);
 
+  // Real lab layout reference:
+  // Room: 16m(X) x 12m(Z) x 3.2m(Y). Origin at center of floor.
+  // X range: -8 to +8. Z range: -6 to +6.
+  //
+  // ZONE MAP (top-down, north=negative Z):
+  //   North wall (Z≈-5.5): Fume hood center, instrumentation bench sides
+  //   West wall  (X≈-7):   Safety station, storage, gas, wash basin
+  //   East wall  (X≈+7):   Window, bookshelf, periodic table, terminal
+  //   South wall (Z≈+5.5): Door, safety equipment near exit
+  //   Center:              Two island benches with 1.5m aisle between
+  //     Bench A (Z≈-1.5): Main wet bench — heating, reactions, glassware
+  //     Bench B (Z≈+1.8): Prep/analysis bench — measuring, writing, small items
+  //
+  // Standard bench height: ~0.9m. Items on bench surfaces at Y≈0.92.
+
+  const BT = 0.92; // bench-top Y
+
   return (
     <>
-      {/* === FURNITURE === */}
+      {/* === FURNITURE — two island benches + wall bench + fume hood === */}
       <RealFumeHood />
-      <RealLabBench position={[0, 0, 0]} />
+      <RealLabBench position={[0, 0, -1.5]} />
+      <RealLabBench position={[0, 0, 1.8]} />
       <RealSafetyCabinet position={[-7, 0, -2]} />
 
-      {/* === BENCH EQUIPMENT === */}
+      {/* North wall bench (instrumentation) — procedural counter */}
+      <mesh position={[-1, 0.45, -4.8]}>
+        <boxGeometry args={[8, 0.9, 0.7]} />
+        <meshStandardMaterial color="#5c6370" roughness={0.3} metalness={0.2} />
+      </mesh>
+
+      {/* West wall counter (safety supplies) — procedural */}
+      <mesh position={[-7.2, 0.45, 1.5]}>
+        <boxGeometry args={[0.7, 0.9, 4]} />
+        <meshStandardMaterial color="#5c6370" roughness={0.3} metalness={0.2} />
+      </mesh>
+
+      {/* === BEAKERS — on main bench === */}
       {containers.map((c) => (
         <RealBeaker key={c.id} container={c} />
       ))}
-      <RealBunsenBurner position={[-1.0, 1.0, 0.3]} />
-      <RealHotPlate position={[-2.5, 1.0, -0.3]} />
-      <RealAnalyticalBalance position={[2.5, 1.0, 0.5]} />
-      <RealRingStand position={[2.5, 1.0, -0.5]} />
-      <RealBurette position={[2.5, 1.5, -0.3]} />
-      <RealCentrifuge position={[3, 1.0, -0.5]} />
-      <RealDesiccator position={[-2, 1.0, -0.5]} />
-      <RealTestTubeRack position={[0.3, 1.0, 0.5]} />
-      <RealGraduatedCylinder position={[0.7, 1.0, 0.3]} />
-      <RealFunnel position={[0.9, 1.0, 0.5]} />
-      <RealWashBottle position={[1.1, 1.0, 0.5]} />
-      <RealMechanicalPipette position={[0.5, 1.0, 0.3]} />
-      <RealButchnerFunnel position={[-1.5, 1.0, -0.7]} />
-      <RealSeparatoryFunnel position={[-1.8, 1.0, -0.7]} />
+
+      {/* === BENCH A (Z≈-1.5): Heating + reaction zone === */}
+      <RealBunsenBurner position={[-1.0, BT, -1.3]} />
+      <RealHotPlate position={[-2.2, BT, -1.7]} />
+      <RealTripodStand position={[-0.5, BT, -1.5]} />
+      <RealCrucibleTongs position={[-1.5, BT, -1.1]} />
+      <RealDesiccator position={[-3.0, BT, -1.5]} />
+      <RealCondenser position={[-2.8, BT, -1.9]} />
+      <RealButchnerFunnel position={[1.0, BT, -1.7]} />
+      <RealSeparatoryFunnel position={[1.5, BT, -1.7]} />
+      <RealRingStand position={[2.0, BT, -1.5]} />
+      <RealBurette position={[2.0, BT + 0.5, -1.3]} />
+      <RealTestTubeRack position={[0.3, BT, -1.2]} />
+      <RealErlenmeyerFlask position={[3.0, BT, -1.3]} />
+      <RealFlorenceFlask position={[3.4, BT, -1.5]} />
+      <RealRoundBottomFlask position={[3.8, BT, -1.4]} />
+      <RealFilterFlask position={[1.3, BT, -1.2]} />
+
+      {/* === BENCH B (Z≈+1.8): Prep/analysis/measurement zone === */}
+      <RealAnalyticalBalance position={[-2.0, BT, 2.0]} />
+      <RealGraduatedCylinder position={[-1.2, BT, 1.8]} />
+      <RealFunnel position={[-0.6, BT, 2.0]} />
+      <RealWashBottle position={[0.0, BT, 1.6]} />
+      <RealMechanicalPipette position={[0.5, BT, 2.0]} />
+      <RealGlassPipette position={[0.9, BT, 1.8]} />
+      <RealWoodenSpatula position={[1.3, BT, 2.0]} />
+      <RealPetriDishes position={[1.8, BT, 1.7]} />
+      <RealSerumBottle position={[2.2, BT, 2.0]} />
+      <RealBottleWithDropper position={[2.5, BT, 1.9]} />
+      <RealVolumetricFlasks position={[2.8, BT, 1.8]} />
+      <RealNotepad position={[3.5, BT, 2.0]} />
+      <RealPen position={[3.7, BT, 1.9]} />
+      <RealPencil position={[3.9, BT, 2.0]} />
+      <RealRuler position={[3.3, BT, 1.7]} />
+      <RealMortarPestle position={[-2.8, BT, 1.8]} />
+
+      {/* === NORTH WALL (Z≈-5): Instrumentation zone === */}
+      <RealMicroscope position={[-4.5, BT, -4.5]} />
+      <RealPHMeter position={[-3.5, BT, -4.5]} />
+      <RealFeverThermometer position={[-2.8, BT, -4.7]} />
+      <RealLaserThermometer position={[-2.0, BT, -4.7]} />
+      <RealStopwatch position={[-3.8, BT, -4.2]} />
+      <RealCentrifuge position={[3.0, BT, -4.5]} />
+      <RealSpectrophotometer position={[1.5, BT, -4.5]} />
+      <RealWhiteboard position={[0, 1.6, -5.85]} />
+
+      {/* === WEST WALL (X≈-7): Safety corridor === */}
       <RealFireExtinguisher position={[-7, 0, 3.5]} />
       <RealFireBlanket position={[-7, 1.4, 4.0]} />
-      <RealSharpsContainer position={[-6.8, 1.0, 5.0]} />
-      <RealGloveBox position={[-6.8, 1.3, 5.5]} />
-      <RealSafetyGoggles position={[-6.3, 1.0, 5.8]} />
-      <RealMicroscope position={[-5, 1.0, -1.5]} />
-      <RealPHMeter position={[-4.6, 1.0, -1.5]} />
-      <RealFeverThermometer position={[-4.2, 1.0, -1.7]} />
-      <RealLaserThermometer position={[-3.9, 1.0, -1.7]} />
-      <RealStopwatch position={[-4.4, 1.0, -1.2]} />
-      <RealMortarPestle position={[-5.3, 1.0, -1.2]} />
-      <RealTripodStand position={[-1.2, 1.0, 0.0]} />
-      <RealPlant position={[7.5, 0, 5.5]} />
-      <RealWallClock position={[3, 2.2, -5.9]} />
-      <RealPeriodicTable position={[7.9, 1.6, 2]} />
-      <RealBookshelf position={[-7.5, 0, -3.5]} />
-      <RealNotepad position={[1.5, 1.0, 0.2]} />
-      <RealPen position={[1.6, 1.0, 0.3]} />
-      <RealPencil position={[1.65, 1.0, 0.35]} />
-      <RealRuler position={[1.4, 1.0, 0.1]} />
-      <RealWashBasin position={[-7.5, 0.9, 0]} />
-      <RealLabChair position={[2, 0, -1]} />
-      <RealOfficeChair position={[4, 0, 1.5]} />
-      <RealStorageCabinet position={[-7.5, 0, -5]} />
-      <RealTrashBin position={[2.5, 0, 1.5]} />
-      <RealWoodenSpatula position={[0.4, 1.0, 0.15]} />
-      <RealErlenmeyerFlask position={[0.2, 1.0, 0.7]} />
-      <RealFlorenceFlask position={[-0.2, 1.0, 0.6]} />
-      <RealRoundBottomFlask position={[-0.4, 1.0, 0.4]} />
-      <RealFilterFlask position={[1.5, 1.0, 0.2]} />
-      <RealCondenser position={[-1.6, 1.0, -0.9]} />
-      <RealOrderingTerminal position={[6, 0, -1]} />
-      <RealGasCylinder position={[-6, 0, -3]} />
-      <RealPetriDishes position={[0.9, 1.0, -0.1]} />
-      <RealFirstAidKit position={[-6.8, 1.3, 4.3]} />
-      <RealSerumBottle position={[0.85, 1.0, -0.15]} />
-      <RealVolumetricFlasks position={[-0.6, 1.0, 0.3]} />
-      <RealWarningSign position={[1.5, 1.8, -5.9]} />
-      <RealCrucibleTongs position={[-1.4, 1.0, 0.4]} />
-      <RealGlassPipette position={[0.75, 1.0, 0.55]} />
-
-      {/* === SAFETY === */}
+      <RealSharpsContainer position={[-6.8, BT, 1.0]} />
+      <RealGloveBox position={[-6.8, 1.3, 2.0]} />
+      <RealSafetyGoggles position={[-6.3, BT, 2.5]} />
       <RealLabCoat position={[-6.5, 1.0, 4.5]} />
+      <RealFirstAidKit position={[-6.8, 1.3, 4.3]} />
+      <RealCO2Extinguisher position={[-7, 0, 4.8]} />
+      <RealWashBasin position={[-7.5, 0, 0]} />
+      <RealStorageCabinet position={[-7.5, 0, -4.5]} />
+      <RealGasCylinder position={[-6, 0, -3.5]} />
+      <RealTrashBin position={[-5.5, 0, 3.0]} />
+
+      {/* === EAST WALL (X≈+7): Reference / admin zone === */}
+      <RealBookshelf position={[7.5, 0, -3.5]} />
+      <RealPeriodicTable position={[7.9, 1.6, 0]} />
+      <RealOrderingTerminal position={[6, 0, 3]} />
+      <RealPlant position={[7.0, 0, 5.0]} />
+
+      {/* === SOUTH WALL (Z≈+5.5): Entry zone === */}
+      <RealWallClock position={[0, 2.2, 5.9]} />
+      <RealWarningSign position={[-1.5, 1.8, 5.9]} />
+
+      {/* === SEATING === */}
+      <RealLabChair position={[0, 0, 0]} />
+      <RealOfficeChair position={[5.5, 0, 3.5]} />
 
       {/* === CHEMICAL BOTTLES === */}
       <ChemicalShelfRack />
@@ -113,31 +159,11 @@ function SceneContents() {
 function Lighting() {
   return (
     <>
-      {/* Soft ambient — base illumination */}
-      <ambientLight intensity={0.6} color="#f0f4f8" />
-
-      {/* Main overhead — even coverage from ceiling */}
-      <directionalLight
-        position={[0, 10, 0]}
-        intensity={0.8}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-10}
-        shadow-camera-right={10}
-        shadow-camera-top={7}
-        shadow-camera-bottom={-7}
-        shadow-bias={-0.0001}
-        color="#f0f4f8"
-      />
-
-      {/* Fill lights — cool blue from window side */}
-      <directionalLight position={[8, 4, 0]} intensity={0.25} color="#c4d8e8" />
-
-      {/* Warm fill — from door side */}
-      <directionalLight position={[-4, 3, 6]} intensity={0.15} color="#fff0d8" />
-
-      {/* Central warm point light — for bench area */}
-      <pointLight position={[0, 2.5, 0]} intensity={0.25} color="#ffffff" distance={8} />
+      <hemisphereLight args={["#e8eef5", "#4b5563", 0.7]} />
+      <ambientLight intensity={0.3} color="#f0f4f8" />
+      <directionalLight position={[2, 8, 1]} intensity={0.6} color="#f0f4f8" />
+      <directionalLight position={[8, 4, 0]} intensity={0.2} color="#c4d8e8" />
+      <directionalLight position={[-4, 3, 6]} intensity={0.1} color="#fff0d8" />
     </>
   );
 }
@@ -148,36 +174,24 @@ export function FirstPersonScene({ onInteract }: { onInteract?: (interactable: I
   return (
     <Canvas
       shadows={false}
-      dpr={[0.5, 1]}
+      dpr={[0.75, 1]}
       gl={{
         antialias: false,
         alpha: false,
-        preserveDrawingBuffer: true,
         powerPreference: "low-power",
       }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
         gl.toneMappingExposure = 1.0;
       }}
-      camera={{ position: [0, 1.7, 4], fov: 70, near: 0.05, far: 100 }}
+      camera={{ position: [0, 1.7, 4], fov: 70, near: 0.05, far: 50 }}
       style={{ background: "#0a0e14" }}
     >
       <Lighting />
       <Suspense fallback={null}>
         <LabRoom />
         <SceneContents />
-        <ContactShadows
-          position={[0, 0.01, 0]}
-          opacity={0.3}
-          scale={20}
-          blur={3}
-          far={4}
-          color="#000000"
-        />
       </Suspense>
-
-      {/* Post-processing — disabled for now (causes WebGL context loss with many models) */}
-      {/* TODO: Re-enable after Draco compression reduces model sizes */}
 
       <FirstPersonController />
       <InteractionSystem onInteract={onInteract} />

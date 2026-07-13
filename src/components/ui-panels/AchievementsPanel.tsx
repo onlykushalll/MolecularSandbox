@@ -257,9 +257,9 @@ export function AchievementsPanel() {
                 <AchievementCard
                   key={a.id}
                   achievement={a}
-                  unlocked={isUnlocked}
+                  unlocked={isUnlocked ?? false}
                   unlockedAt={unlockedAt}
-                  hidden={isHidden}
+                  hidden={isHidden ?? false}
                   state={state}
                 />
               );

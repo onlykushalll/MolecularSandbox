@@ -35,9 +35,9 @@ export function LabRoom() {
         <planeGeometry args={[width, depth]} />
         <meshStandardMaterial
           color="#4b5563"
-          roughness={0.2}
-          metalness={0.15}
-          envMapIntensity={0.8}
+          roughness={0.4}
+          metalness={0.1}
+          envMapIntensity={0.5}
         />
       </mesh>
 
@@ -127,8 +127,7 @@ export function LabRoom() {
         <boxGeometry args={[0.1, 1.8, 2.0]} />
         <meshStandardMaterial color="#3a3f4b" roughness={0.4} metalness={0.7} />
       </mesh>
-      {/* Window light (soft daylight coming in) */}
-      <directionalLight position={[halfW + 2, 2, 1.5]} intensity={0.3} color="#d4e8f5" />
+      {/* Window light effect handled by Lighting() component */}
 
       {/* West wall (solid) */}
       <mesh position={[-halfW, height / 2, 0]} receiveShadow castShadow>
@@ -150,16 +149,14 @@ export function LabRoom() {
         </mesh>
       ))}
 
-      {/* === CEILING LIGHT PANELS — hero zone (wet bench + fume hood axis): brightest, sharpest === */}
+      {/* === CEILING LIGHT PANELS — emissive visual only, actual illumination from Lighting() === */}
       {[-3, 0, 3].map((x) =>
         [-3, 0, 3].map((z) => (
           <group key={`light-${x}-${z}`} position={[x, height - 0.05, z]}>
-            {/* Panel housing */}
             <mesh>
               <boxGeometry args={[1.2, 0.08, 0.5]} />
               <meshStandardMaterial color="#e8e8e8" roughness={0.5} metalness={0.3} />
             </mesh>
-            {/* Glowing panel */}
             <mesh position={[0, -0.05, 0]}>
               <boxGeometry args={[1.1, 0.02, 0.4]} />
               <meshStandardMaterial
@@ -169,15 +166,11 @@ export function LabRoom() {
                 toneMapped={false}
               />
             </mesh>
-            {/* Actual light — brighter than the side zones, this is the room's visual hero */}
-            <pointLight position={[0, -0.15, 0]} intensity={0.55} color="#f0f4f8" distance={7} decay={1.5} />
           </group>
         ))
       )}
 
-      {/* === CEILING LIGHT PANELS — storage / instrumentation zones: present but deliberately
-           quieter than the hero zone. Previously these X≈±7 areas had zero dedicated light
-           at all (the 9-light grid only spanned X=[-3,3] in a 16m-wide room). === */}
+      {/* Side zone panels — visual emissive only */}
       {[-6.5, 6.5].map((x) =>
         [-3, 0, 3].map((z) => (
           <group key={`side-light-${x}-${z}`} position={[x, height - 0.05, z]}>
@@ -194,8 +187,6 @@ export function LabRoom() {
                 toneMapped={false}
               />
             </mesh>
-            {/* Quieter, cooler light — enough to see and work by, without competing with the hero zone */}
-            <pointLight position={[0, -0.15, 0]} intensity={0.28} color="#dde4ea" distance={6} decay={1.5} />
           </group>
         ))
       )}
